@@ -191,8 +191,6 @@ Hourly demand, service windows, order-size distribution, matched AOV by hour/day
 ### 6. Advanced SQL
 Category ranking, cumulative contribution, month-over-month movement, seven-day moving average, ABC/Pareto classification, anomaly screening, revenue concentration, and category mix over time.
 
-The repository currently contains **40 SELECT-based analysis/data-quality queries**, excluding setup/load statements.
-
 ## Reproducibility
 
 ### Requirements
