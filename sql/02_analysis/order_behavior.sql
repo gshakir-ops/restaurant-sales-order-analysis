@@ -2,8 +2,7 @@
 -- Order Behavior Analysis
 -- MySQL 8.0+
 -- =====================================================
--- The dataset has no customer ID, so this file focuses on
--- order-level behavior rather than customer behavior.
+-- The dataset has no customer identifier, so this file focuses on order-level patterns.
 -- =====================================================
 
 -- 1. Orders by hour
