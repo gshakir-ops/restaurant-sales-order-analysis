@@ -1,201 +1,128 @@
-# Key Findings - Restaurant Orders Analysis
+# Key Findings
 
-**Analysis Period**: January 1 - March 31, 2023  
-**Dataset**: 5,370 orders | 12,233 items | 33 menu items | 4 categories
+**Analysis period:** January 1 – March 31, 2023  
+**Source rows:** 12,234 order-detail records  
+**Distinct orders:** 5,370  
+**Known menu items:** 32  
+**Unmatched item-ID rows:** 137
 
----
+## Executive Summary
 
-## 📊 Executive Summary
+The restaurant generated **$159,217.90 in matched menu-price revenue** across 5,370 orders during the three-month period. Italian was the largest revenue category, while Hamburger was the highest-volume menu item.
 
-This analysis reveals critical insights into restaurant performance, customer behavior, and menu optimization opportunities. The data shows strong revenue concentration in Asian cuisine, clear peak hour patterns, and specific underperforming menu items requiring attention.
+The dataset also has a clear data-quality issue: 137 order-detail rows contain the literal `NULL` item ID. Those rows are preserved but excluded from price-based revenue calculations because their menu price cannot be established from the supplied reference table.
 
----
+## 1. Revenue Performance
 
-## 💰 Revenue Performance
+**Finding:** Matched menu-item revenue totaled **$159,217.90**, with an average order value of **$29.65**.
 
-### Overall Metrics
-- **Total Revenue**: $159,217.50 (estimated)
-- **Average Order Value (AOV)**: $29.65
-- **Average Items per Order**: 2.28
-- **Total Orders**: 5,370
-- **Total Items Sold**: 12,233
+**Interpretation:** The dataset supports reliable order-level revenue and AOV reporting once unmatched item IDs are excluded.
 
-### Revenue by Category
-1. **Italian** - 36.2% of total revenue
-   - Highest-priced items (avg $16.75)
-   - Premium positioning successful
-   
-2. **Asian** - 28.4% of total revenue
-   - Most ordered category
-   - Best balance of price and volume
-   
-3. **Mexican** - 22.8% of total revenue
-   - Mid-range pricing strategy
-   - Consistent performance
-   
-4. **American** - 12.6% of total revenue
-   - Lower price point category
-   - High volume, lower margin
+**Limitation:** This is menu-price revenue, not profit. The dataset does not include cost, discounts, tax, refunds, or labor expense.
 
-### Top 5 Revenue-Generating Items
-1. **Chicken Parmesan** - $4,140.85 (231 orders)
-2. **Korean Beef Bowl** - $3,950.60 (220 orders)
-3. **Chicken Burrito** - $3,498.65 (270 orders)
-4. **Shrimp Scampi** - $3,391.05 (170 orders)
-5. **Spaghetti & Meatballs** - $3,233.50 (180 orders)
+### Revenue by category
 
----
+| Category | Revenue | Share |
+|---|---:|---:|
+| Italian | $49,462.70 | 31.07% |
+| Asian | $46,720.65 | 29.34% |
+| Mexican | $34,796.80 | 21.85% |
+| American | $28,237.75 | 17.74% |
 
-## 🍽️ Menu Performance
+**Finding:** Italian contributes the largest share of matched revenue at **31.07%**, followed closely by Asian at **29.34%**.
 
-### Star Performers (High Volume + High Revenue)
-- **Chicken Burrito**: Most ordered item (270 orders)
-- **Korean Beef Bowl**: Best revenue per item ratio
-- **Edamame**: Highest frequency as add-on item
-- **Chicken Parmesan**: Premium item with strong demand
+**Business interpretation:** Italian and Asian menus are important revenue contributors and warrant continued performance monitoring.
 
-### Hidden Gems (Underordered, High Potential)
-- **Shrimp Scampi** ($19.95) - Premium item, low awareness
-- **Eggplant Parmesan** ($16.95) - Vegetarian option underutilized
-- **Salmon Roll** ($14.95) - Asian category expansion opportunity
+## 2. Top Menu Items
 
-### Low Performers (Consider Action)
-- **Hot Dog** - Only 78 orders (0.64% of items)
-- **Veggie Burger** - 84 orders (0.69% of items)
-- **Chips & Salsa** - Stand-alone item, rarely ordered
-- **French Fries** - Low attachment rate
+### Highest revenue
 
-### Category Rankings by Volume
-1. **Asian**: 3,470 items (28.4%)
-2. **Italian**: 3,280 items (26.8%)
-3. **Mexican**: 2,890 items (23.6%)
-4. **American**: 2,593 items (21.2%)
+| Item | Items Sold | Revenue |
+|---|---:|---:|
+| Korean Beef Bowl | 588 | $10,554.60 |
+| Spaghetti & Meatballs | 470 | $8,436.50 |
+| Tofu Pad Thai | 562 | $8,149.00 |
+| Cheeseburger | 583 | $8,132.85 |
+| Hamburger | 622 | $8,054.90 |
 
----
+### Highest volume
 
-## 👥 Customer Behavior Insights
+| Item | Items Sold |
+|---|---:|
+| Hamburger | 622 |
+| Edamame | 620 |
+| Korean Beef Bowl | 588 |
+| Cheeseburger | 583 |
+| French Fries | 571 |
 
-### Peak Ordering Times
-- **Busiest Hour**: 12:00 PM - 1:00 PM (848 orders, 15.8%)
-- **Second Peak**: 6:00 PM - 7:00 PM (672 orders, 12.5%)
-- **Lunch Rush**: 11:00 AM - 2:00 PM (42% of daily orders)
-- **Dinner Service**: 6:00 PM - 9:00 PM (31% of daily orders)
-- **Slowest Period**: 9:00 AM - 11:00 AM (4% of daily orders)
+**Finding:** Hamburger is the highest-volume item, while Korean Beef Bowl generates the most revenue.
 
-### Order Patterns
-- **Single-Item Orders**: 38.2% (2,051 orders)
-- **2-3 Items**: 44.7% (2,400 orders)
-- **4-6 Items**: 14.3% (768 orders)
-- **7+ Items**: 2.8% (151 orders)
+**Business interpretation:** Volume and revenue leadership are not identical. Menu decisions should therefore consider both demand and revenue contribution.
 
-### Day of Week Performance
-**Strongest Days**:
-- Friday: $24,850 (15.6% of weekly revenue)
-- Saturday: $26,120 (16.4% of weekly revenue)
-- Thursday: $23,450 (14.7% of weekly revenue)
+## 3. Order Timing
 
-**Slowest Days**:
-- Monday: $20,180 (12.7% of weekly revenue)
-- Tuesday: $19,950 (12.5% of weekly revenue)
+**Finding:** 12:00 PM is the busiest hour with **644 orders (11.99% of all orders)**.
 
-### Most Common Item Pairings
-1. **Chicken Burrito + Chips & Guacamole** (182 times)
-2. **Korean Beef Bowl + Edamame** (156 times)
-3. **Spaghetti + Chicken Parmesan** (143 times)
-4. **California Roll + Salmon Roll** (128 times)
-5. **Hamburger + French Fries** (118 times)
+The 11 AM–2 PM lunch window accounts for approximately **36.2% of orders** based on matched item activity.
 
----
+**Business interpretation:** Lunch demand is concentrated enough to justify examining staffing, preparation, and service capacity around the midday window.
 
-## 📈 Trend Analysis
+**Limitation:** Transaction data does not contain wait times, staffing levels, kitchen throughput, or service-level metrics, so operational improvements cannot be quantified from this dataset alone.
 
-### Monthly Growth
-- **January**: $51,240 (baseline)
-- **February**: $52,890 (+3.2% MoM)
-- **March**: $55,087 (+4.2% MoM)
-- **Overall Growth**: 7.5% over 3 months
+## 4. Order Size
 
-### Price Sensitivity
-- **Premium Items ($15+)**: 41.2% of total items sold
-- **Mid-Range ($10-$14.99)**: 38.6% of total items sold
-- **Budget (<$10)**: 20.2% of total items sold
+The observed order-size distribution is:
 
-**Finding**: Higher prices do NOT correlate with lower demand. Premium items (Italian, Asian) drive both volume and revenue.
+| Matched order size | Share of orders |
+|---|---:|
+| 1 item | 38.23% |
+| 2–3 items | 44.58% |
+| 4–6 items | 14.77% |
+| 7–10 items | 1.42% |
+| 11+ items | 1.01% |
 
-### Order Value Distribution
-- **$0-$14.99**: 18.2% of orders
-- **$15-$24.99**: 32.4% of orders
-- **$25-$39.99**: 38.8% of orders
-- **$40+**: 10.6% of orders
+**Finding:** Orders containing 2–3 items form the largest group.
 
----
+**Business interpretation:** This pattern can be used to test bundle or cross-sell ideas, but the historical data alone does not prove that a bundle would increase AOV.
 
-## ⚠️ Critical Issues
+## 5. Basket Pairings
 
-### Underperforming Items
-**Immediate Attention Required**:
-- Hot Dog: 78 orders in 3 months (< 1 per day)
-- Veggie Burger: 84 orders (minimal demand)
-- French Fries: Low standalone orders, rarely paired
+The most frequently observed item pairs include:
 
-**Action Items**: Remove, reprice, or rebrand these items.
+- Hamburger + Edamame — 78 orders
+- Cheeseburger + Edamame — 75 orders
+- Hamburger + Cheeseburger — 72 orders
+- Korean Beef Bowl + Edamame — 68 orders
+- French Fries + Korean Beef Bowl — 66 orders
 
-### Category Imbalance
-- American category represents 24% of menu but only 21% of orders
-- Menu composition doesn't align with customer preferences
-- Opportunity to expand Asian and Italian sections
+**Finding:** Several pairs recur across orders, indicating opportunities for menu merchandising or bundle experiments.
 
-### Peak Hour Capacity
-- 42% of orders occur during 3-hour lunch window
-- Potential bottleneck during 12-1 PM peak
-- Staff scheduling optimization needed
+**Limitation:** Co-occurrence does not establish that one item causes demand for another.
 
----
+## 6. Monthly Revenue
 
-## 💡 Strategic Opportunities
+| Month | Revenue | Change vs. prior month |
+|---|---:|---:|
+| January | $53,816.95 | — |
+| February | $50,790.35 | -5.62% |
+| March | $54,610.60 | +7.52% |
 
-### 1. Menu Optimization
-- **Expand**: Add 2-3 Asian items (highest demand category)
-- **Promote**: Shrimp Scampi, Eggplant Parmesan (hidden gems)
-- **Remove**: Hot Dog, Veggie Burger (consistently underperform)
+**Finding:** Revenue dipped in February and recovered in March. March revenue was approximately **1.48% above January**.
 
-### 2. Revenue Enhancement
-- **Bundle Strategy**: Create combo meals based on pairing data
-  - "Korean Bowl Combo" (Bowl + Edamame)
-  - "Italian Feast" (Pasta + Chicken Parmesan)
-  - "Burrito Meal" (Burrito + Chips & Guac)
+**Interpretation:** The three-month sample does not support a strong sustained growth claim.
 
-### 3. Operational Efficiency
-- **Staffing**: Increase lunch shift capacity (11 AM - 2 PM)
-- **Inventory**: Focus on high-turnover items
-- **Kitchen Prep**: Pre-prep Asian/Italian items (highest volume)
+## 7. Data Quality
 
-### 4. Pricing Strategy
-- Premium pricing is working (41% of sales at $15+)
-- Consider slight price increase on top performers
-- No need to discount to drive volume
+**Finding:** 137 of 12,234 order-detail rows have an unmatched `item_id`, represented as the literal `NULL` value in the source file.
 
----
+**Treatment:** The raw records are preserved. They are excluded from price-based revenue calculations because the menu price cannot be reliably identified.
 
-## 📋 Next Steps
+**Additional checks:** No duplicate `order_details_id` values were found, and all 32 known menu items appear in matched order data.
 
-### Immediate (This Week)
-1. Review underperforming items with kitchen team
-2. Analyze cost structure of low performers
-3. Test bundled meal promotions
+## Practical Takeaways
 
-### Short-Term (This Month)
-1. Implement menu changes (remove/add items)
-2. Optimize staffing schedule for peak hours
-3. Launch promotional campaign for hidden gems
-
-### Long-Term (This Quarter)
-1. Expand successful categories (Asian/Italian)
-2. Develop seasonal menu items
-3. Implement loyalty program targeting high-value orders
-
----
-
-**Report Generated**: September 20, 2026  
-**Analyst**: [Your Name]  
-**Data Source**: Restaurant Orders Database (Jan-Mar 2023)
+1. Protect and monitor the strongest revenue contributors, especially Italian and Asian categories.
+2. Evaluate high-volume items separately from high-revenue items.
+3. Use the lunch-hour concentration to frame operational experiments, not to claim guaranteed staffing savings.
+4. Test bundle ideas using the observed pairings and the large 2–3-item order segment.
+5. Resolve or trace the 137 unmatched source records before using the dataset for profitability, item-level cost analysis, or more detailed menu optimization.
