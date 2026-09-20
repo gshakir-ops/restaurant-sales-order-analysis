@@ -1,325 +1,224 @@
 -- =====================================================
 -- Advanced SQL Analysis
+-- MySQL 8.0+
 -- =====================================================
--- Complex queries demonstrating advanced SQL techniques:
--- window functions, CTEs, subqueries, and statistical analysis
--- =====================================================
-
--- =====================================================
--- 1. RUNNING TOTALS AND CUMULATIVE REVENUE
+-- Advanced techniques are used only where they improve
+-- analytical interpretation.
 -- =====================================================
 
-SELECT
-    od.order_date,
-    SUM(mi.price) AS daily_revenue,
-    SUM(SUM(mi.price)) OVER (
-        ORDER BY od.order_date
-        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-    ) AS cumulative_revenue,
-    ROUND(
-        (SUM(mi.price) / SUM(SUM(mi.price)) OVER (
-            ORDER BY od.order_date
-            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        )) * 100, 2
-    ) AS percentage_of_total
-FROM order_details od
-JOIN menu_items mi ON od.item_id = mi.menu_item_id
-GROUP BY od.order_date
-ORDER BY od.order_date;
-
-
--- =====================================================
--- 2. RANKED ITEMS BY CATEGORY WITH PERCENTILE
--- =====================================================
-
-SELECT
-    mi.category,
-    mi.item_name,
-    COUNT(*) AS orders,
-    PERCENT_RANK() OVER (
-        PARTITION BY mi.category
-        ORDER BY COUNT(*) DESC
-    ) * 100 AS percentile_rank,
-    NTILE(4) OVER (
-        PARTITION BY mi.category
-        ORDER BY COUNT(*) DESC
-    ) AS quartile
-FROM order_details od
-JOIN menu_items mi ON od.item_id = mi.menu_item_id
-GROUP BY mi.category, mi.item_name
-ORDER BY mi.category, orders DESC;
-
-
--- =====================================================
--- 3. MOVING AVERAGE - 7 DAY REVENUE TREND
--- =====================================================
-
-SELECT
-    od.order_date,
-    SUM(mi.price) AS daily_revenue,
-    ROUND(
-        AVG(SUM(mi.price)) OVER (
-            ORDER BY od.order_date
-            ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
-        ), 2
-    ) AS moving_avg_7day,
-    ROUND(
-        AVG(SUM(mi.price)) OVER (
-            ORDER BY od.order_date
-            ROWS BETWEEN 29 PRECEDING AND CURRENT ROW
-        ), 2
-    ) AS moving_avg_30day
-FROM order_details od
-JOIN menu_items mi ON od.item_id = mi.menu_item_id
-GROUP BY od.order_date
-ORDER BY od.order_date;
-
-
--- =====================================================
--- 4. CATEGORY PERFORMANCE WITH LAG COMPARISON
--- =====================================================
-
-WITH daily_category_revenue AS (
+-- 1. Revenue ranking within each category
+WITH item_metrics AS (
     SELECT
-        od.order_date,
         mi.category,
-        SUM(mi.price) AS category_daily_revenue
+        mi.item_name,
+        COUNT(*) AS items_sold,
+        SUM(mi.price) AS revenue
     FROM order_details od
-    JOIN menu_items mi ON od.item_id = mi.menu_item_id
-    GROUP BY od.order_date, mi.category
+    JOIN menu_items mi
+        ON od.item_id = mi.menu_item_id
+    GROUP BY mi.category, mi.item_name
 )
 SELECT
-    order_date,
     category,
-    category_daily_revenue,
-    LAG(category_daily_revenue) OVER (
+    item_name,
+    items_sold,
+    ROUND(revenue, 2) AS revenue,
+    RANK() OVER (
         PARTITION BY category
-        ORDER BY order_date
-    ) AS previous_day_revenue,
-    ROUND(
-        ((category_daily_revenue - LAG(category_daily_revenue) OVER (
-            PARTITION BY category
-            ORDER BY order_date
-        )) / LAG(category_daily_revenue) OVER (
-            PARTITION BY category
-            ORDER BY order_date
-        )) * 100, 2
-    ) AS day_over_day_change
-FROM daily_category_revenue
-ORDER BY category, order_date;
+        ORDER BY revenue DESC
+    ) AS revenue_rank_in_category
+FROM item_metrics
+ORDER BY category, revenue_rank_in_category;
 
-
--- =====================================================
--- 5. CUSTOMER SEGMENTATION BY ORDER VALUE
--- =====================================================
-
-WITH customer_segments AS (
-    SELECT
-        od.order_id,
-        SUM(mi.price) AS order_total,
-        COUNT(*) AS items_in_order,
-        CASE
-            WHEN SUM(mi.price) < 10 THEN 'Budget'
-            WHEN SUM(mi.price) < 20 THEN 'Standard'
-            WHEN SUM(mi.price) < 30 THEN 'Premium'
-            ELSE 'Ultra-Premium'
-        END AS segment,
-        NTILE(4) OVER (ORDER BY SUM(mi.price)) AS quartile
-    FROM order_details od
-    JOIN menu_items mi ON od.item_id = mi.menu_item_id
-    GROUP BY od.order_id
-)
-SELECT
-    segment,
-    COUNT(*) AS orders_in_segment,
-    ROUND(AVG(order_total), 2) AS avg_order_value,
-    ROUND(AVG(items_in_order), 2) AS avg_items,
-    MIN(order_total) AS min_order_value,
-    MAX(order_total) AS max_order_value,
-    ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM customer_segments)), 2) AS percentage
-FROM customer_segments
-GROUP BY segment
-ORDER BY avg_order_value DESC;
-
-
--- =====================================================
--- 6. ITEM AFFINITY ANALYSIS
--- =====================================================
-
--- What items are purchased together most frequently?
-WITH item_pairs AS (
-    SELECT
-        od1.order_id,
-        od1.item_id AS item_1,
-        od2.item_id AS item_2,
-        mi1.item_name AS item_1_name,
-        mi2.item_name AS item_2_name
-    FROM order_details od1
-    JOIN order_details od2 ON od1.order_id = od2.order_id AND od1.item_id < od2.item_id
-    JOIN menu_items mi1 ON od1.item_id = mi1.menu_item_id
-    JOIN menu_items mi2 ON od2.item_id = mi2.menu_item_id
-)
-SELECT
-    item_1_name,
-    item_2_name,
-    COUNT(*) AS times_together,
-    RANK() OVER (ORDER BY COUNT(*) DESC) AS affinity_rank
-FROM item_pairs
-GROUP BY item_1_name, item_2_name
-ORDER BY times_together DESC
-LIMIT 20;
-
-
--- =====================================================
--- 7. STATISTICAL SUMMARY BY CATEGORY
--- =====================================================
-
-SELECT
-    mi.category,
-    COUNT(*) AS total_items_sold,
-    ROUND(AVG(mi.price), 2) AS mean_price,
-    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY mi.price) AS median_price,
-    ROUND(STDDEV_POP(mi.price), 2) AS std_dev,
-    MIN(mi.price) AS min_price,
-    MAX(mi.price) AS max_price,
-    ROUND(MAX(mi.price) - MIN(mi.price), 2) AS price_range
-FROM order_details od
-JOIN menu_items mi ON od.item_id = mi.menu_item_id
-GROUP BY mi.category
-ORDER BY mean_price DESC;
-
-
--- =====================================================
--- 8. ANOMALY DETECTION - UNUSUAL ORDER PATTERNS
--- =====================================================
-
-WITH order_stats AS (
-    SELECT
-        od.order_id,
-        COUNT(*) AS item_count,
-        SUM(mi.price) AS order_total,
-        AVG(item_count) OVER () AS avg_items,
-        STDDEV(item_count) OVER () AS stddev_items
-    FROM order_details od
-    JOIN menu_items mi ON od.item_id = mi.menu_item_id
-    GROUP BY od.order_id
-)
-SELECT
-    order_id,
-    item_count,
-    order_total,
-    ROUND(avg_items, 2) AS avg_items,
-    ROUND(stddev_items, 2) AS stddev_items,
-    CASE
-        WHEN item_count > (avg_items + (2 * stddev_items)) THEN 'Unusually Large Order'
-        WHEN item_count < (avg_items - (2 * stddev_items)) THEN 'Unusually Small Order'
-        ELSE 'Normal'
-    END AS order_classification
-FROM order_stats
-WHERE item_count > (avg_items + (2 * stddev_items))
-   OR item_count < (avg_items - (2 * stddev_items))
-ORDER BY item_count DESC;
-
-
--- =====================================================
--- 9. ABC ANALYSIS (PARETO) - 80/20 RULE
--- =====================================================
-
+-- 2. Cumulative revenue contribution by menu item
 WITH item_revenue AS (
     SELECT
         mi.item_name,
         mi.category,
-        SUM(mi.price) AS total_revenue,
-        SUM(SUM(mi.price)) OVER (ORDER BY SUM(mi.price) DESC) AS cumulative_revenue,
-        SUM(SUM(mi.price)) OVER () AS total_revenue_all
+        SUM(mi.price) AS revenue
     FROM order_details od
-    JOIN menu_items mi ON od.item_id = mi.menu_item_id
+    JOIN menu_items mi
+        ON od.item_id = mi.menu_item_id
     GROUP BY mi.item_name, mi.category
 )
 SELECT
     item_name,
     category,
-    total_revenue,
-    ROUND((total_revenue / total_revenue_all) * 100, 2) AS pct_of_total,
-    ROUND((cumulative_revenue / total_revenue_all) * 100, 2) AS cumulative_pct,
-    CASE
-        WHEN (cumulative_revenue / total_revenue_all) <= 0.80 THEN 'A - Core (80%)'
-        WHEN (cumulative_revenue / total_revenue_all) <= 0.95 THEN 'B - Important (80-95%)'
-        ELSE 'C - Rest (5%)'
-    END AS abc_classification
-FROM item_revenue
-ORDER BY total_revenue DESC;
-
-
--- =====================================================
--- 10. CATEGORY MIX ANALYSIS - TIME SERIES
--- =====================================================
-
-SELECT
-    od.order_date,
-    mi.category,
-    COUNT(*) AS items_sold,
+    ROUND(revenue, 2) AS revenue,
     ROUND(
-        (COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (PARTITION BY od.order_date)), 2
-    ) AS category_percentage,
-    RANK() OVER (
-        PARTITION BY od.order_date
-        ORDER BY COUNT(*) DESC
-    ) AS rank_by_date
-FROM order_details od
-JOIN menu_items mi ON od.item_id = mi.menu_item_id
-GROUP BY od.order_date, mi.category
-ORDER BY od.order_date DESC, items_sold DESC;
+        revenue * 100.0 / SUM(revenue) OVER (),
+        2
+    ) AS revenue_share_pct,
+    ROUND(
+        SUM(revenue) OVER (
+            ORDER BY revenue DESC
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) * 100.0 / SUM(revenue) OVER (),
+        2
+    ) AS cumulative_revenue_share_pct
+FROM item_revenue
+ORDER BY revenue DESC;
 
+-- 3. Month-over-month revenue movement
+WITH monthly_revenue AS (
+    SELECT
+        DATE_FORMAT(od.order_date, '%Y-%m') AS month,
+        SUM(mi.price) AS revenue
+    FROM order_details od
+    JOIN menu_items mi
+        ON od.item_id = mi.menu_item_id
+    GROUP BY DATE_FORMAT(od.order_date, '%Y-%m')
+),
+with_lag AS (
+    SELECT
+        month,
+        revenue,
+        LAG(revenue) OVER (ORDER BY month) AS previous_month_revenue
+    FROM monthly_revenue
+)
+SELECT
+    month,
+    ROUND(revenue, 2) AS revenue,
+    ROUND(previous_month_revenue, 2) AS previous_month_revenue,
+    ROUND(
+        (revenue - previous_month_revenue) * 100.0 /
+        NULLIF(previous_month_revenue, 0),
+        2
+    ) AS mom_change_pct
+FROM with_lag
+ORDER BY month;
 
--- =====================================================
--- 11. REVENUE CONCENTRATION ANALYSIS
--- =====================================================
+-- 4. 7-day moving average of daily revenue
+WITH daily_revenue AS (
+    SELECT
+        od.order_date,
+        SUM(mi.price) AS daily_revenue
+    FROM order_details od
+    JOIN menu_items mi
+        ON od.item_id = mi.menu_item_id
+    GROUP BY od.order_date
+)
+SELECT
+    order_date,
+    ROUND(daily_revenue, 2) AS daily_revenue,
+    ROUND(
+        AVG(daily_revenue) OVER (
+            ORDER BY order_date
+            ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+        ),
+        2
+    ) AS seven_day_moving_avg
+FROM daily_revenue
+ORDER BY order_date;
 
--- Herfindahl-Hirschman Index (HHI) - market concentration
-WITH item_shares AS (
+-- 5. ABC / Pareto classification by menu-item revenue
+WITH item_revenue AS (
     SELECT
         mi.item_name,
-        (SUM(mi.price) / (SELECT SUM(price) FROM order_details od2 JOIN menu_items mi2 ON od2.item_id = mi2.menu_item_id)) AS market_share
+        mi.category,
+        SUM(mi.price) AS revenue
     FROM order_details od
-    JOIN menu_items mi ON od.item_id = mi.menu_item_id
+    JOIN menu_items mi
+        ON od.item_id = mi.menu_item_id
+    GROUP BY mi.item_name, mi.category
+),
+scored AS (
+    SELECT
+        item_name,
+        category,
+        revenue,
+        SUM(revenue) OVER (
+            ORDER BY revenue DESC
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) AS cumulative_revenue,
+        SUM(revenue) OVER () AS total_revenue
+    FROM item_revenue
+)
+SELECT
+    item_name,
+    category,
+    ROUND(revenue, 2) AS revenue,
+    ROUND(revenue * 100.0 / total_revenue, 2) AS revenue_share_pct,
+    ROUND(cumulative_revenue * 100.0 / total_revenue, 2) AS cumulative_share_pct,
+    CASE
+        WHEN cumulative_revenue / total_revenue <= 0.80 THEN 'A'
+        WHEN cumulative_revenue / total_revenue <= 0.95 THEN 'B'
+        ELSE 'C'
+    END AS abc_class
+FROM scored
+ORDER BY revenue DESC;
+
+-- 6. Unusually large orders using a 2-standard-deviation rule
+WITH order_sizes AS (
+    SELECT
+        od.order_id,
+        COUNT(*) AS item_count,
+        SUM(mi.price) AS order_revenue
+    FROM order_details od
+    JOIN menu_items mi
+        ON od.item_id = mi.menu_item_id
+    GROUP BY od.order_id
+),
+stats AS (
+    SELECT
+        AVG(item_count) AS avg_items,
+        STDDEV_POP(item_count) AS stddev_items
+    FROM order_sizes
+)
+SELECT
+    os.order_id,
+    os.item_count,
+    ROUND(os.order_revenue, 2) AS order_revenue,
+    ROUND(s.avg_items, 2) AS avg_items,
+    ROUND(s.stddev_items, 2) AS stddev_items
+FROM order_sizes os
+CROSS JOIN stats s
+WHERE os.item_count > s.avg_items + (2 * s.stddev_items)
+ORDER BY os.item_count DESC;
+
+-- 7. Revenue concentration by menu item
+WITH item_revenue AS (
+    SELECT
+        mi.item_name,
+        SUM(mi.price) AS revenue
+    FROM order_details od
+    JOIN menu_items mi
+        ON od.item_id = mi.menu_item_id
     GROUP BY mi.item_name
 )
 SELECT
-    ROUND(SUM(market_share * market_share) * 10000, 2) AS hhi_index,
-    CASE
-        WHEN SUM(market_share * market_share) * 10000 < 1500 THEN 'Competitive'
-        WHEN SUM(market_share * market_share) * 10000 < 2500 THEN 'Moderate Concentration'
-        ELSE 'High Concentration'
-    END AS market_concentration
-FROM item_shares;
+    item_name,
+    ROUND(revenue, 2) AS revenue,
+    ROUND(
+        revenue * 100.0 / SUM(revenue) OVER (),
+        2
+    ) AS revenue_share_pct
+FROM item_revenue
+ORDER BY revenue DESC;
 
-
--- =====================================================
--- 12. SEASONAL DECOMPOSITION - WEEKLY PATTERN
--- =====================================================
-
+-- 8. Category mix over time
+WITH monthly_category AS (
+    SELECT
+        DATE_FORMAT(od.order_date, '%Y-%m') AS month,
+        mi.category,
+        COUNT(*) AS items_sold
+    FROM order_details od
+    JOIN menu_items mi
+        ON od.item_id = mi.menu_item_id
+    GROUP BY DATE_FORMAT(od.order_date, '%Y-%m'), mi.category
+)
 SELECT
-    CASE EXTRACT(DOW FROM od.order_date)
-        WHEN 0 THEN 'Sunday'
-        WHEN 1 THEN 'Monday'
-        WHEN 2 THEN 'Tuesday'
-        WHEN 3 THEN 'Wednesday'
-        WHEN 4 THEN 'Thursday'
-        WHEN 5 THEN 'Friday'
-        WHEN 6 THEN 'Saturday'
-    END AS day_of_week,
-    COUNT(DISTINCT od.order_id) AS orders,
-    ROUND(AVG(mi.price), 2) AS avg_item_price,
+    month,
+    category,
+    items_sold,
     ROUND(
-        (COUNT(DISTINCT od.order_id) * 100.0 /
-        (SELECT COUNT(DISTINCT order_id) FROM order_details)), 2
-    ) AS pct_of_weekly_orders,
-    ROUND(
-        COUNT(DISTINCT od.order_id) /
-        (COUNT(DISTINCT od.order_id) OVER ()), 2
-    ) AS weight_factor
-FROM order_details od
-JOIN menu_items mi ON od.item_id = mi.menu_item_id
-GROUP BY EXTRACT(DOW FROM od.order_date)
-ORDER BY COUNT(DISTINCT od.order_id) DESC;
+        items_sold * 100.0 /
+        SUM(items_sold) OVER (PARTITION BY month),
+        2
+    ) AS category_share_pct,
+    RANK() OVER (
+        PARTITION BY month
+        ORDER BY items_sold DESC
+    ) AS monthly_category_rank
+FROM monthly_category
+ORDER BY month, monthly_category_rank;
