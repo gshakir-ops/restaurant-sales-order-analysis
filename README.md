@@ -1,316 +1,562 @@
 # Restaurant Sales & Order Analysis
 
-**MySQL 8.0+ | Sales Analysis | Menu Performance | Order Behavior**
+**MySQL 8.0+ | SQL Analytics | Data Quality | Business Insights**
 
-A portfolio case study using restaurant order data to evaluate sales performance, menu contribution, order patterns, time-of-day demand, and data-quality limitations.
+## Overview
 
-## Business Context
+This project analyzes restaurant order data to understand revenue performance, menu-item demand, category contribution, order patterns, and time-based ordering activity.
 
-Restaurant transaction data can help answer practical questions about what sells, when orders occur, which categories contribute the most revenue, and where data-quality issues may affect reporting.
+The analysis follows a structured workflow: **data profiling → data-quality validation → revenue analysis → menu performance → order behavior → advanced SQL analysis → business findings and recommendations**.
 
-This project uses two related tables—menu items and order-detail transactions—to build a reproducible SQL analysis. The emphasis is on reliable metric definitions and evidence-based business interpretation rather than producing a large number of queries.
+The project is designed to demonstrate how transactional data can be transformed into reliable, business-oriented insights using SQL while clearly documenting data limitations and analytical assumptions.
 
-## Objective
+---
 
-The analysis aims to understand:
+## Business Objectives
 
-- matched menu-price revenue and order-level sales performance
-- menu-item and category contribution
-- order volume and order-size patterns
-- hourly and day-of-week demand
-- recurring item pairings
-- revenue concentration across menu items
-- limitations created by missing item references
+The analysis focuses on the following business areas:
 
-## Business Questions
+* Revenue and average order value
+* Menu-item and category performance
+* Order volume and order-size patterns
+* Peak ordering periods
+* Item-level revenue contribution
+* Basket/item-pair relationships
+* Revenue concentration and menu mix
+* Data-quality risks that may affect analysis
 
-1. What is the total matched menu-price revenue?
-2. What is the average order value for orders with at least one matched menu item?
-3. Which menu items generate the most revenue?
-4. Which menu items have the highest order volume?
-5. Which categories contribute the most matched revenue?
-6. How does matched revenue change over time?
-7. Which hours and days have the highest order activity?
-8. What is the observed order-size distribution?
-9. Which item pairs commonly occur in the same order?
-10. How does observed item demand vary across price tiers?
+---
+
+## Key Business Questions
+
+### Revenue Performance
+
+* What is the total matched menu-price revenue?
+* What is the average order value?
+* How does revenue change over time?
+* Which menu categories contribute the most revenue?
+* Which menu items generate the most revenue?
+
+### Menu Performance
+
+* Which items have the highest order volume?
+* Which items contribute the most revenue?
+* How concentrated is revenue across menu items?
+* How does observed demand vary across price tiers?
+* Which items have relatively lower volume or revenue and warrant further review?
+
+### Order Behavior
+
+* What are the busiest ordering hours?
+* Which days have the highest order activity?
+* What is the distribution of items per order?
+* Which menu-item pairs occur most frequently within the same order?
+
+### Data Quality
+
+* Are there duplicate order-detail identifiers?
+* Are there missing values?
+* Are menu-item references valid?
+* Are prices and dates within expected ranges?
+* How do missing item references affect price-based revenue analysis?
+
+---
 
 ## Dataset
 
-The repository contains the original CSV files used for the analysis.
-
-| Table | Rows | Purpose |
-|---|---:|---|
-| `menu_items` | 32 | Menu item, category, and price reference |
-| `order_details` | 12,234 | Order-detail transactions |
-| Distinct orders | 5,370 | Unique source orders |
-
-**Categories:** 4  
-**Analysis period:** January 1, 2023 – March 31, 2023  
-**Menu price range:** $5.00 – $19.95
+The repository contains two primary tables and a data dictionary.
 
 ### `menu_items`
 
-- `menu_item_id`
-- `item_name`
-- `category`
-- `price`
+| Column         | Description                 |
+| -------------- | --------------------------- |
+| `menu_item_id` | Unique menu-item identifier |
+| `item_name`    | Menu item name              |
+| `category`     | Menu category/cuisine       |
+| `price`        | Menu price in USD           |
 
 ### `order_details`
 
-- `order_details_id`
-- `order_id`
-- `order_date`
-- `order_time`
-- `item_id`
+| Column             | Description                                     |
+| ------------------ | ----------------------------------------------- |
+| `order_details_id` | Unique identifier for an order line             |
+| `order_id`         | Identifier grouping items within the same order |
+| `order_date`       | Order date                                      |
+| `order_time`       | Order time                                      |
+| `item_id`          | Reference to `menu_items.menu_item_id`          |
 
-`order_details.item_id` references `menu_items.menu_item_id` when a valid menu item is available.
+### Dataset Snapshot
 
-## Data Quality
+| Metric                      |                      Value |
+| --------------------------- | -------------------------: |
+| Analysis period             | January 1 – March 31, 2023 |
+| Order-detail rows           |                     12,234 |
+| Distinct orders             |                      5,370 |
+| Known menu items            |                         32 |
+| Menu categories             |                          4 |
+| Rows with missing `item_id` |                        137 |
 
-The raw source contains **137 order-detail rows with a literal `NULL` value in `item_id`**.
+The dataset does not contain a customer identifier, cost data, margin data, staffing information, wait times, discounts, refunds, or tax information.
 
-Those rows affect **137 of 5,370 orders (2.55%)**. Of those, **27 orders (0.50%) have no matched menu item at all**.
+---
 
-The raw CSV files are preserved. Missing-item rows are not deleted or assigned an invented price.
+## Data Model
 
-For price-based analysis:
+The main relationship is:
 
-- **12,097** order-detail rows have a valid menu-item match.
-- **5,343** source orders have at least one matched menu item.
-- The **$159,217.90** revenue figure is therefore **matched menu-price revenue**.
-- AOV is calculated using those **5,343 valued orders**, not the 5,370 source orders.
-
-Additional quality checks cover duplicate IDs, full-record duplicates, required fields, unexpected categories, date/time validity, price validity, and menu-item coverage.
-
-## Analytical Approach
-
+```text
+menu_items.menu_item_id
+        │
+        │ 1-to-many
+        ▼
+order_details.item_id
 ```
+
+The `item_id` field is nullable because the source data contains 137 order-detail rows without a usable menu-item reference.
+
+---
+
+## Data Quality Approach
+
+Data quality is treated as part of the analysis rather than as a separate cleanup step.
+
+The validation process includes:
+
+* Row-count validation
+* Duplicate identifier checks
+* Missing-value checks
+* Referential-integrity checks
+* Menu-item uniqueness checks
+* Price validation
+* Date-range validation
+* Coverage checks for known menu items
+* Validation of the analytical revenue base
+
+### Missing `item_id` Values
+
+The source data contains **137 order-detail rows with a literal `NULL` item ID**.
+
+These records are:
+
+1. Preserved in the raw dataset
+2. Not assigned an estimated menu item
+3. Not assigned an estimated price
+4. Excluded from price-based revenue calculations because a reliable menu price cannot be established
+
+This represents approximately **1.12% of all source order-detail rows**.
+
+This treatment keeps the raw data intact while preventing unsupported revenue assumptions.
+
+---
+
+## Revenue Definition
+
+Revenue analysis is based on **matched menu-price values**.
+
+For each order-detail row with a valid menu-item match:
+
+```text
+Revenue = Menu Item Price
+```
+
+The dataset does not contain a separate quantity field; each order-detail row represents an item recorded within an order.
+
+Rows with missing `item_id` values are excluded from price-based revenue calculations because their menu price cannot be reliably identified.
+
+Therefore, reported revenue should be interpreted as:
+
+> **Matched menu-price revenue, not profit or net sales.**
+
+The dataset does not provide:
+
+* product cost
+* gross margin
+* discounts
+* taxes
+* refunds
+* labor cost
+* operating expenses
+
+---
+
+## Analytical Workflow
+
+```text
 Raw CSV Data
-    ↓
+      │
+      ▼
 Data Profiling
-    ↓
+      │
+      ▼
 Data Quality Validation
-    ↓
-Matched / Reliable Analytical Records
-    ↓
-Revenue & Menu Analysis
-    ↓
-Order Behavior Analysis
-    ↓
-Advanced SQL
-    ↓
-Findings & Testable Recommendations
+      │
+      ▼
+Reliable Analytical Base
+      │
+      ├── Revenue Analysis
+      ├── Menu Performance
+      ├── Order Behavior
+      └── Advanced SQL Analysis
+      │
+      ▼
+Key Findings
+      │
+      ▼
+Evidence-Based Recommendations
 ```
 
-## Core Validated Metrics
+---
 
-| Metric | Result |
-|---|---:|
-| Source orders | **5,370** |
-| Valued orders | **5,343** |
-| Matched order-detail rows | **12,097** |
-| Matched menu-price revenue | **$159,217.90** |
-| Matched-order AOV | **$29.80** |
-| Matched items per valued order | **2.26** |
+## Key Findings
 
-### Revenue by Category
+### Revenue Performance
 
-| Category | Revenue | Revenue Share |
-|---|---:|---:|
-| Italian | $49,462.70 | 31.07% |
-| Asian | $46,720.65 | 29.34% |
-| Mexican | $34,796.80 | 21.85% |
-| American | $28,237.75 | 17.74% |
+* Matched menu-price revenue totaled **$159,217.90** across **5,370 orders**.
+* Average order value was approximately **$29.65**.
+* Italian generated the largest share of matched revenue at **31.07%**.
+* Asian contributed **29.34%** of matched revenue.
 
-### Highest-Revenue Menu Items
+### Menu Performance
 
-| Item | Items Sold | Revenue |
-|---|---:|---:|
-| Korean Beef Bowl | 588 | $10,554.60 |
-| Spaghetti & Meatballs | 470 | $8,436.50 |
-| Tofu Pad Thai | 562 | $8,149.00 |
-| Cheeseburger | 583 | $8,132.85 |
-| Hamburger | 622 | $8,054.90 |
+The highest-revenue menu items were:
 
-### Highest-Volume Menu Items
+| Menu Item             | Items Sold |    Revenue |
+| --------------------- | ---------: | ---------: |
+| Korean Beef Bowl      |        588 | $10,554.60 |
+| Spaghetti & Meatballs |        470 |  $8,436.50 |
+| Tofu Pad Thai         |        562 |  $8,149.00 |
+| Cheeseburger          |        583 |  $8,132.85 |
+| Hamburger             |        622 |  $8,054.90 |
 
-| Item | Items Sold |
-|---|---:|
-| Hamburger | 622 |
-| Edamame | 620 |
-| Korean Beef Bowl | 588 |
-| Cheeseburger | 583 |
-| French Fries | 571 |
+Hamburger had the highest observed item volume at **622 units**, while Korean Beef Bowl generated the highest revenue at **$10,554.60**.
+
+This demonstrates why menu evaluation should consider both **volume and revenue contribution** rather than relying on a single metric.
 
 ### Order Timing
 
-**12:00 PM** is the busiest hour with **647 source orders (12.05%)**.
+* **12:00 PM** was the busiest hour with **644 orders**, representing approximately **11.99% of all orders**.
+* The **11 AM–2 PM** lunch period represented approximately **36.2% of orders** based on matched order activity.
 
-The **11 AM–2 PM** lunch window contains **1,956 source orders (36.42%)**.
+This provides a basis for reviewing midday preparation, staffing, and service capacity, but the dataset does not contain the operational metrics required to quantify those effects.
 
 ### Order Size
 
-| Order size | Share of source orders |
-|---|---:|
-| 1 item | 38.23% |
-| 2–3 items | 44.58% |
-| 4–6 items | 14.77% |
-| 7–10 items | 1.42% |
-| 11+ items | 1.01% |
+The largest observed order-size group was **2–3 items per order**, representing approximately **44.58% of matched orders**.
 
-## Static Visual Summary
+This pattern provides a useful basis for testing bundle and cross-sell ideas, but historical co-occurrence alone does not demonstrate incremental revenue.
 
-<img src="docs/revenue_by_category.svg" alt="Revenue by category" width="760">
+### Basket Pairings
 
-<img src="docs/monthly_revenue.svg" alt="Monthly matched revenue" width="760">
+Frequently observed item pairs included:
 
-<img src="docs/orders_by_hour.svg" alt="Source orders by hour" width="760">
+| Item Pair                       | Orders |
+| ------------------------------- | -----: |
+| Hamburger + Edamame             |     78 |
+| Cheeseburger + Edamame          |     75 |
+| Hamburger + Cheeseburger        |     72 |
+| Korean Beef Bowl + Edamame      |     68 |
+| French Fries + Korean Beef Bowl |     66 |
 
-These visuals are static supporting outputs, not a Power BI dashboard.
+These relationships can support menu merchandising or bundle experiments.
 
-A Power BI implementation plan is documented in `docs/powerbi_dashboard_spec.md`.
+### Monthly Revenue
 
-## SQL Analysis
+| Month    |    Revenue | Change vs. Prior Month |
+| -------- | ---------: | ---------------------: |
+| January  | $53,816.95 |                      — |
+| February | $50,790.35 |                 -5.62% |
+| March    | $54,610.60 |                 +7.52% |
 
-### 1. Setup
-Database creation, table definitions, indexes, and reproducible MySQL CSV-load examples.
+Revenue declined in February and recovered in March. The three-month observation period is not sufficient to establish a sustained long-term growth trend.
 
-### 2. Data Quality
-Row counts, duplicate detection, missing-item impact, referential integrity, categories, dates, times, and prices.
+---
 
-### 3. Revenue Analysis
-Matched revenue, AOV, category contribution, menu-item revenue, daily/monthly trends, price tiers, and week-over-week movement.
+## Business Recommendations
 
-### 4. Menu Performance
-Item volume, category performance, item ranking, descriptive price-tier analysis, performance matrix, and revenue contribution.
+The analysis supports several areas for further business investigation.
 
-### 5. Order Behavior
-Hourly demand, service windows, order-size distribution, matched AOV by hour/day, category mix, and basket pairings.
+### 1. Evaluate Menu Performance Using Both Volume and Revenue
 
-### 6. Advanced SQL
-Category ranking, cumulative contribution, month-over-month movement, seven-day moving average, ABC/Pareto classification, anomaly screening, revenue concentration, and category mix over time.
+Volume leaders and revenue leaders are not always the same. Menu reviews should therefore consider both metrics before making product decisions.
 
-## Reproducibility
+### 2. Investigate Missing Item References
 
-### Requirements
+The 137 records with missing `item_id` values should be traced back to the original source system or transaction extract to improve item-level analytical completeness.
 
-- MySQL 8.0+
-- MySQL client with `LOCAL INFILE` enabled for CSV loading
+### 3. Test Bundles Around Observed Item Pairings
 
-### 1. Create the database and tables
+Frequently co-occurring items can be used to design small bundle or merchandising experiments.
 
-From the repository root:
+Future testing should monitor:
 
-```bash
-mysql -u YOUR_USERNAME -p < sql/01_setup/create_tables.sql
+* Average order value
+* Units per order
+* Bundle attachment rate
+* Gross margin
+* Cannibalization of standalone items
+
+### 4. Review Midday Capacity
+
+The concentration of orders around lunch provides a reason to review preparation, staffing, throughput, and peak-period service performance.
+
+### 5. Monitor Category Mix
+
+Italian and Asian categories are the largest revenue contributors and should be monitored regularly alongside volume, availability, and margin.
+
+### 6. Treat Price Findings as Descriptive
+
+The current dataset can describe demand across price tiers, but it cannot establish price elasticity or causal effects. Any pricing change should be evaluated through controlled testing using revenue and margin outcomes.
+
+---
+
+## SQL Techniques
+
+The project uses **MySQL 8.0+** and demonstrates:
+
+### Core SQL
+
+* `SELECT`
+* `WHERE`
+* `GROUP BY`
+* `HAVING`
+* `ORDER BY`
+* `CASE`
+* Aggregate functions
+* `JOIN`
+* Subqueries
+
+### Analytical SQL
+
+* Common Table Expressions (CTEs)
+* Window functions
+* `RANK()`
+* `ROW_NUMBER()`
+* `NTILE()`
+* `LAG()`
+* Cumulative sums
+* Rolling averages
+* Percentage-of-total calculations
+
+### Time-Based Analysis
+
+* `HOUR()`
+* `DAYNAME()`
+* `DAYOFWEEK()`
+* `DATE_FORMAT()`
+* `WEEKDAY()`
+* Date-based aggregation
+
+### Business Analysis
+
+* Revenue contribution
+* Average Order Value
+* Order-size distribution
+* Category mix
+* Menu-item ranking
+* Basket/item-pair analysis
+* ABC/Pareto classification
+* Revenue concentration
+* Descriptive anomaly screening
+
+### Data Quality
+
+* Duplicate detection
+* NULL checks
+* Referential-integrity validation
+* Date-range checks
+* Price validation
+
+Advanced SQL is used where it improves the analysis rather than simply increasing query complexity.
+
+---
+
+## Project Structure
+
+```text
+restaurant-sales-order-analysis/
+│
+├── analysis/
+│   ├── key_findings.md
+│   └── recommendations.md
+│
+├── data/
+│   └── raw/
+│       ├── menu_items.csv
+│       ├── order_details.csv
+│       └── restaurant_db_data_dictionary.csv
+│
+├── docs/
+│   └── SQL_TECHNIQUES.md
+│
+├── sql/
+│   ├── 01_setup/
+│   │   └── create_tables.sql
+│   │
+│   ├── 02_analysis/
+│   │   ├── data_quality.sql
+│   │   ├── revenue_analysis.sql
+│   │   ├── menu_performance.sql
+│   │   └── order_behavior.sql
+│   │
+│   └── 03_advanced/
+│       └── advanced_analysis.sql
+│
+├── .gitignore
+├── LICENSE
+└── README.md
 ```
 
-The setup script creates and selects the `restaurant_orders` database.
+---
 
-### 2. Load the CSV data
+## Getting Started
 
-Run the commented `LOAD DATA LOCAL INFILE` examples in `sql/01_setup/create_tables.sql`.
+### Prerequisites
 
-Load `menu_items.csv` first.
+* MySQL 8.0+
+* MySQL Workbench or another MySQL client
+* Access to the repository CSV files
 
-For `order_details.csv`, the source text `NULL` values are converted to SQL NULL with:
+### 1. Create or select a MySQL database
 
-```sql
-SET item_id = NULLIF(@item_id, 'NULL');
-```
+Create a MySQL database and select it before running the setup script.
 
-### 3. Run the analysis
+### 2. Create the analytical tables
 
 Run:
 
+```text
+sql/01_setup/create_tables.sql
 ```
+
+The setup script defines the analytical schema and includes reproducible CSV loading examples.
+
+### 3. Load the raw CSV files
+
+Use the `LOAD DATA LOCAL INFILE` examples provided in `create_tables.sql`.
+
+The `order_details.csv` import converts the source text value:
+
+```text
+NULL
+```
+
+into SQL `NULL` using:
+
+```sql
+NULLIF(@item_id, 'NULL')
+```
+
+Depending on your MySQL configuration, `LOCAL INFILE` may need to be enabled.
+
+### 4. Run data-quality validation
+
+Execute:
+
+```text
 sql/02_analysis/data_quality.sql
+```
+
+Review the data-quality output before interpreting price-based revenue.
+
+### 5. Run the analysis
+
+Execute the analysis files in this order:
+
+```text
 sql/02_analysis/revenue_analysis.sql
 sql/02_analysis/menu_performance.sql
 sql/02_analysis/order_behavior.sql
 sql/03_advanced/advanced_analysis.sql
 ```
 
-### 4. Review the written analysis
+### 6. Review the analytical outputs
 
-- `analysis/key_findings.md`
-- `analysis/recommendations.md`
+See:
 
-## SQL Techniques
+* [`analysis/key_findings.md`](analysis/key_findings.md)
+* [`analysis/recommendations.md`](analysis/recommendations.md)
+* [`docs/SQL_TECHNIQUES.md`](docs/SQL_TECHNIQUES.md)
 
-The current SQL demonstrates:
-
-- JOINs
-- aggregation and GROUP BY
-- CASE
-- subqueries
-- CTEs
-- window functions
-- RANK
-- LAG
-- cumulative calculations
-- rolling averages
-- percentage-of-total calculations
-- MySQL date/time functions
-- basket analysis
-- ABC/Pareto analysis
-- standard-deviation screening
-
-## Recommendations
-
-Recommendations are framed as **testable business actions**, not guaranteed outcomes. The dataset does not contain costs, margins, customer IDs, staffing data, wait times, discounts, refunds, or experiment results, so profitability, customer retention, staffing impact, and price elasticity require additional data or controlled testing.
-
-See `analysis/recommendations.md` for the detailed recommendation-to-validation framework.
+---
 
 ## Limitations
 
-- The analysis covers a three-month observation period.
-- 137 source rows have missing `item_id` values.
-- 27 source orders have no matched menu item, so their item-level revenue cannot be established.
-- Revenue is menu-price revenue, not profit.
-- There is no cost, margin, tax, discount, refund, or labor data.
-- There is no customer identifier, so the project cannot support customer retention or lifetime-value analysis.
-- There is no staffing, queue, or ticket-time data, so operational impact cannot be quantified.
-- Missing item references should be resolved before using this dataset for complete profitability or menu-level performance decisions.
+This project supports descriptive restaurant analytics, but the dataset is not sufficient for:
 
-## Project Structure
+* Profitability analysis
+* Gross-margin analysis
+* Customer retention analysis
+* Customer lifetime value
+* Customer segmentation
+* Staffing ROI
+* Wait-time analysis
+* Price elasticity estimation
+* Causal impact measurement
 
-```
-restaurant-sales-order-analysis/
-├── data/
-│   └── raw/
-│       ├── menu_items.csv
-│       ├── order_details.csv
-│       └── restaurant_db_data_dictionary.csv
-├── sql/
-│   ├── 01_setup/
-│   │   └── create_tables.sql
-│   ├── 02_analysis/
-│   │   ├── data_quality.sql
-│   │   ├── menu_performance.sql
-│   │   ├── order_behavior.sql
-│   │   └── revenue_analysis.sql
-│   └── 03_advanced/
-│       └── advanced_analysis.sql
-├── analysis/
-│   ├── key_findings.md
-│   └── recommendations.md
-├── docs/
-│   ├── SQL_TECHNIQUES.md
-│   ├── powerbi_dashboard_spec.md
-│   ├── orders_by_hour.svg
-│   ├── monthly_revenue.svg
-│   └── revenue_by_category.svg
-├── .gitignore
-├── LICENSE
-└── README.md
-```
+The analysis is also limited to a **three-month observation period**.
+
+The 137 source rows with missing `item_id` values introduce an additional limitation for complete item-level revenue analysis.
+
+---
+
+## Analytical Interpretation
+
+The results should be interpreted as **descriptive evidence from the available transaction data**, not as proof of causation.
+
+For example:
+
+* Frequent item pairings indicate co-occurrence, not causality.
+* Higher or lower item volume does not by itself establish pricing effectiveness.
+* Revenue concentration does not automatically imply that a product should be expanded or removed.
+* Operational recommendations require operational data to quantify their impact.
+
+Business recommendations therefore should be treated as **testable actions and hypotheses** rather than guaranteed outcomes.
+
+---
+
+## Documentation
+
+Additional project documentation is available in:
+
+* [`analysis/key_findings.md`](analysis/key_findings.md) — validated analytical findings
+* [`analysis/recommendations.md`](analysis/recommendations.md) — evidence-based recommendations and validation ideas
+* [`docs/SQL_TECHNIQUES.md`](docs/SQL_TECHNIQUES.md) — SQL techniques used in the project
+* [`data/raw/restaurant_db_data_dictionary.csv`](data/raw/restaurant_db_data_dictionary.csv) — dataset field definitions
+
+---
+
+## Tools & Technologies
+
+| Tool                | Purpose                                    |
+| ------------------- | ------------------------------------------ |
+| **MySQL 8.0+**      | Database and SQL analysis                  |
+| **MySQL Workbench** | SQL development and execution              |
+| **CSV**             | Raw dataset format                         |
+| **GitHub**          | Version control and portfolio presentation |
+| **Markdown**        | Analytical documentation                   |
+
+---
+
+## Project Objective
+
+The primary objective of this project is to demonstrate a professional analytical workflow:
+
+> **Validate the data → build reliable metrics → analyze business performance → identify patterns → communicate evidence-based findings.**
+
+The emphasis is on **analytical correctness, transparent assumptions, reproducibility, and business relevance**.
+
+---
 
 ## Author
 
 **Golam Shakir**
 
+Data Analyst Portfolio Project
+
+---
+
 ## License
 
-MIT License
+The original SQL queries, documentation, and project materials in this repository are licensed under the MIT License.
+
+The included restaurant dataset is used for analytical/educational purposes and may be subject to separate rights or licensing terms from its original source. The MIT License does not grant additional rights to third-party dataset content.
