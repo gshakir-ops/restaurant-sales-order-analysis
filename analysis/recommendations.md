@@ -1,71 +1,65 @@
 # Evidence-Based Recommendations
 
-These recommendations are **hypotheses and testable actions**, not guaranteed outcomes. The dataset does not contain costs, margins, customer IDs, staffing data, wait times, discounts, or experiment results, so precise ROI and operational-impact projections are intentionally avoided.
+These recommendations are **testable business actions**, not guaranteed outcomes. The current dataset does not contain costs, margins, customer IDs, staffing data, wait times, discounts, refunds, or experiment results, so precise ROI and operational-impact projections are intentionally avoided.
 
-## 1. Prioritize Menu Decisions Using Two Metrics
+## 1. Review Menu Performance Using Volume and Revenue
 
 ### Observation
-Hamburger has the highest order volume (**622**), while Korean Beef Bowl has the highest revenue (**$10,554.60**).
+Hamburger has the highest order volume (**622 items sold**), while Korean Beef Bowl generates the highest matched revenue (**$10,554.60**).
 
 ### Recommendation
-Use a two-axis menu review:
+Use both measures in recurring menu reviews:
 
-- **Volume leaders**: protect availability and monitor operational demand.
-- **Revenue leaders**: monitor pricing, availability, and contribution to total revenue.
+- volume to understand demand
+- revenue to understand sales contribution
 
 ### Validation
-Track future item volume, revenue, and margin before making removal or expansion decisions.
+Track future volume, revenue, availability, and—when available—contribution margin before changing menu placement or assortment.
 
----
-
-## 2. Investigate the 137 Unmatched Item-Detail Rows
+## 2. Resolve the 137 Missing Item References
 
 ### Observation
-137 source rows have `item_id = NULL`, so their menu price cannot be established.
+137 order-detail rows contain a missing `item_id`, affecting 137 source orders. Twenty-seven orders contain no matched menu item.
 
 ### Recommendation
-Trace the source system or original transaction extract to determine whether these are genuine missing item references or incomplete exports.
+Trace the source system or original transaction extract to determine whether these references are genuinely missing or were lost during export.
 
 ### Why it matters
-Resolving the records would improve the completeness of item-level revenue analysis.
+Resolving the references would increase completeness of item-level revenue reporting.
 
----
-
-## 3. Test Bundles Around Existing Item Pairings
+## 3. Test Bundles Around Recurring Item Pairs
 
 ### Observation
-Repeated item pairs include:
+Repeated pairs include:
 
-- Hamburger + Edamame (78)
-- Cheeseburger + Edamame (75)
-- Hamburger + Cheeseburger (72)
-- Korean Beef Bowl + Edamame (68)
+- Hamburger + Edamame (78 orders)
+- Cheeseburger + Edamame (75 orders)
+- Hamburger + Cheeseburger (72 orders)
+- Korean Beef Bowl + Edamame (68 orders)
 
-The largest order-size segment is also 2–3 items (44.58%).
+The largest order-size group is also 2–3 items (44.58%).
 
 ### Recommendation
-Pilot a small number of bundle placements or combo offers around high-frequency pairings.
+Pilot a small number of bundle or merchandising tests around high-frequency combinations.
 
 ### Validation
-Compare:
+Measure:
 
 - bundle attachment rate
 - average order value
 - units per order
-- gross margin per order
-- cannibalization of standalone items
+- contribution margin per order
+- cannibalization of standalone sales
 
-Do not assume that historical co-occurrence automatically creates incremental revenue.
+Do not assume that historical pair frequency automatically creates incremental revenue.
 
----
-
-## 4. Review Midday Capacity
+## 4. Review Midday Service Capacity
 
 ### Observation
-12:00 PM is the busiest hour at 644 orders, and the 11 AM–2 PM window represents roughly 36.2% of orders.
+12:00 PM is the busiest hour with 647 source orders, and 11 AM–2 PM contains 36.42% of source orders.
 
 ### Recommendation
-Review staffing, prep, and order throughput around the lunch window.
+Review staffing, preparation, queue handling, and kitchen throughput around the lunch window.
 
 ### Validation
 Collect operational metrics such as:
@@ -73,62 +67,57 @@ Collect operational metrics such as:
 - ticket time
 - queue time
 - orders per labor hour
-- order cancellations
+- cancellations
 - peak-hour error rate
 
-Only then estimate an operational impact.
-
----
+Only then estimate operational impact.
 
 ## 5. Monitor Category Mix
 
 ### Observation
-Italian represents 31.07% of matched revenue and Asian 29.34%.
+Italian contributes 31.07% of matched revenue and Asian contributes 29.34%.
 
 ### Recommendation
-Use category-level revenue and volume trends as a recurring menu-review metric.
+Use category-level revenue and volume as recurring menu-review metrics.
 
 ### Validation
-Track category share monthly and combine it with contribution margin, customer feedback, and item availability before adding or removing products.
+Combine category results with contribution margin, product availability, and any future customer-feedback data before adding or removing menu items.
 
----
+## 6. Treat Price Findings as Descriptive
 
-## 6. Treat Price Findings as Descriptive, Not Causal
-
-The current dataset shows meaningful demand across budget, mid-range, and premium price tiers, but it does not provide a valid experiment for measuring price elasticity.
+### Observation
+The dataset shows demand across budget, mid-range, and premium price tiers, but it does not provide a controlled pricing experiment.
 
 ### Recommendation
-Before changing prices on top-selling items, establish a controlled test design and track volume, revenue, and margin.
+Before changing prices, establish a test design and track volume, matched revenue, and contribution margin.
 
-A price change should be evaluated on **incremental gross profit**, not revenue alone.
-
----
+### Validation
+Evaluate price changes using incremental profit rather than revenue alone.
 
 ## Suggested KPI Review
 
-A repeatable weekly or monthly review should track:
-
 | KPI | Purpose |
 |---|---|
-| Revenue | Overall sales performance |
-| Orders | Demand volume |
-| AOV | Basket value |
-| Items per order | Basket depth |
+| Matched revenue | Price-based sales performance |
+| Source orders | Overall demand volume |
+| Valued orders | Orders with reliable item-level pricing |
+| Matched-order AOV | Basket value for valued orders |
+| Items per valued order | Basket depth where item prices are known |
 | Category revenue share | Menu mix |
 | Top-item volume | Demand concentration |
 | Top-item revenue share | Revenue concentration |
 | Peak-hour orders | Operational planning |
-| Unmatched item rows | Data quality |
+| Missing item rows | Data quality |
 
 ## Limitations
 
-This dataset is useful for descriptive restaurant analytics, but it is not sufficient on its own for:
+This dataset is suitable for descriptive restaurant analytics, but not sufficient on its own for:
 
 - profitability analysis
-- customer retention analysis
-- customer lifetime value
+- customer retention or lifetime value
 - staffing ROI
+- service-time optimization
 - price elasticity estimation
 - causal impact measurement
 
-Those questions require additional data or controlled experiments.
+These questions require additional data or controlled experiments.

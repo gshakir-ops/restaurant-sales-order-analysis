@@ -1,7 +1,7 @@
-# Data files (optional - uncomment if you don't want to commit data)
-# *.csv
+# Intentionally tracked project data
+# The raw CSV files are part of the reproducible portfolio project.
 
-# OS generated files
+# OS-generated files
 .DS_Store
 .DS_Store?
 ._*
@@ -10,7 +10,7 @@
 ehthumbs.db
 Thumbs.db
 
-# IDE
+# IDE/editor files
 .vscode/
 .idea/
 *.swp
@@ -22,7 +22,7 @@ Thumbs.db
 *.bak
 *.log
 
-# Database files (if using SQLite locally)
+# Local database files
 *.db
 *.sqlite
 *.sqlite3

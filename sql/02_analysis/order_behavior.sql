@@ -2,19 +2,21 @@
 -- Order Behavior Analysis
 -- MySQL 8.0+
 -- =====================================================
--- This file intentionally uses "order behavior" rather than
--- "customer behavior" because the dataset has no customer ID.
+-- The dataset has no customer identifier, so this file focuses on order-level patterns.
 -- =====================================================
 
 -- 1. Orders by hour
+-- Uses all source orders because time-of-day analysis does not
+-- require a menu-item price match.
 SELECT
     HOUR(order_time) AS hour_of_day,
     COUNT(DISTINCT order_id) AS total_orders,
-    COUNT(*) AS matched_items_sold,
-    ROUND(COUNT(*) / COUNT(DISTINCT order_id), 2) AS avg_items_per_order
-FROM order_details od
-JOIN menu_items mi
-    ON od.item_id = mi.menu_item_id
+    ROUND(
+        COUNT(DISTINCT order_id) * 100.0 /
+        (SELECT COUNT(DISTINCT order_id) FROM order_details),
+        2
+    ) AS order_share_pct
+FROM order_details
 GROUP BY HOUR(order_time)
 ORDER BY hour_of_day;
 
@@ -32,27 +34,26 @@ SELECT
         (SELECT COUNT(DISTINCT order_id) FROM order_details),
         2
     ) AS order_share_pct
-FROM order_details od
-JOIN menu_items mi
-    ON od.item_id = mi.menu_item_id
+FROM order_details
 GROUP BY service_window
 ORDER BY total_orders DESC;
 
 -- 3. Order-size distribution
+-- Counts source order-detail lines, including lines with missing
+-- item IDs, because the line still represents an order-detail record.
 WITH order_sizes AS (
     SELECT
         order_id,
-        COUNT(*) AS matched_item_count
+        COUNT(*) AS item_count
     FROM order_details
-    WHERE item_id IS NOT NULL
     GROUP BY order_id
 )
 SELECT
     CASE
-        WHEN matched_item_count = 1 THEN '1 item'
-        WHEN matched_item_count BETWEEN 2 AND 3 THEN '2-3 items'
-        WHEN matched_item_count BETWEEN 4 AND 6 THEN '4-6 items'
-        WHEN matched_item_count BETWEEN 7 AND 10 THEN '7-10 items'
+        WHEN item_count = 1 THEN '1 item'
+        WHEN item_count BETWEEN 2 AND 3 THEN '2-3 items'
+        WHEN item_count BETWEEN 4 AND 6 THEN '4-6 items'
+        WHEN item_count BETWEEN 7 AND 10 THEN '7-10 items'
         ELSE '11+ items'
     END AS order_size,
     COUNT(*) AS number_of_orders,
@@ -65,35 +66,35 @@ FROM order_sizes
 GROUP BY order_size
 ORDER BY number_of_orders DESC;
 
--- 4. Average order value by hour
+-- 4. Matched revenue and AOV by hour
 SELECT
     HOUR(od.order_time) AS hour_of_day,
-    COUNT(DISTINCT od.order_id) AS total_orders,
-    ROUND(SUM(mi.price), 2) AS revenue,
+    COUNT(DISTINCT od.order_id) AS valued_orders,
+    ROUND(SUM(mi.price), 2) AS matched_revenue,
     ROUND(
         SUM(mi.price) / COUNT(DISTINCT od.order_id),
         2
-    ) AS avg_order_value
+    ) AS matched_order_aov
 FROM order_details od
 JOIN menu_items mi
     ON od.item_id = mi.menu_item_id
 GROUP BY HOUR(od.order_time)
-ORDER BY avg_order_value DESC;
+ORDER BY matched_order_aov DESC;
 
 -- 5. Category mix by broad time period
-WITH timed_orders AS (
+WITH timed_items AS (
     SELECT
         CASE
             WHEN HOUR(order_time) BETWEEN 11 AND 14 THEN 'Lunch'
             WHEN HOUR(order_time) BETWEEN 18 AND 21 THEN 'Dinner'
             ELSE 'Other'
         END AS service_window,
-        category,
+        mi.category,
         COUNT(*) AS item_count
     FROM order_details od
     JOIN menu_items mi
         ON od.item_id = mi.menu_item_id
-    GROUP BY service_window, category
+    GROUP BY service_window, mi.category
 )
 SELECT
     service_window,
@@ -104,7 +105,7 @@ SELECT
         SUM(item_count) OVER (PARTITION BY service_window),
         2
     ) AS category_share_pct
-FROM timed_orders
+FROM timed_items
 ORDER BY service_window, item_count DESC;
 
 -- 6. Top item pairs appearing in the same order
@@ -120,34 +121,40 @@ JOIN menu_items mi1
     ON od1.item_id = mi1.menu_item_id
 JOIN menu_items mi2
     ON od2.item_id = mi2.menu_item_id
-GROUP BY mi1.menu_item_id, mi1.item_name, mi2.menu_item_id, mi2.item_name
+GROUP BY
+    mi1.menu_item_id,
+    mi1.item_name,
+    mi2.menu_item_id,
+    mi2.item_name
 ORDER BY orders_together DESC
 LIMIT 10;
 
 -- 7. Orders by day of week
 SELECT
-    DAYNAME(od.order_date) AS day_of_week,
-    COUNT(DISTINCT od.order_id) AS total_orders,
+    DAYNAME(order_date) AS day_of_week,
+    COUNT(DISTINCT order_id) AS total_orders,
     ROUND(
-        COUNT(DISTINCT od.order_id) * 100.0 /
+        COUNT(DISTINCT order_id) * 100.0 /
         (SELECT COUNT(DISTINCT order_id) FROM order_details),
         2
     ) AS order_share_pct
-FROM order_details od
-GROUP BY DAYOFWEEK(od.order_date), DAYNAME(od.order_date)
+FROM order_details
+GROUP BY DAYOFWEEK(order_date), DAYNAME(order_date)
 ORDER BY total_orders DESC;
 
--- 8. Daily revenue and AOV by day of week
+-- 8. Matched revenue and AOV by day of week
 SELECT
     DAYNAME(od.order_date) AS day_of_week,
-    COUNT(DISTINCT od.order_id) AS total_orders,
-    ROUND(SUM(mi.price), 2) AS revenue,
+    COUNT(DISTINCT od.order_id) AS valued_orders,
+    ROUND(SUM(mi.price), 2) AS matched_revenue,
     ROUND(
         SUM(mi.price) / COUNT(DISTINCT od.order_id),
         2
-    ) AS avg_order_value
+    ) AS matched_order_aov
 FROM order_details od
 JOIN menu_items mi
     ON od.item_id = mi.menu_item_id
-GROUP BY DAYOFWEEK(od.order_date), DAYNAME(od.order_date)
-ORDER BY revenue DESC;
+GROUP BY
+    DAYOFWEEK(od.order_date),
+    DAYNAME(od.order_date)
+ORDER BY matched_revenue DESC;

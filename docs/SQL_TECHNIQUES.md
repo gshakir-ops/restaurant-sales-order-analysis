@@ -17,8 +17,6 @@ This project is built for **MySQL 8.0+**.
 - CTEs
 - window functions
 - RANK
-- ROW_NUMBER
-- NTILE
 - LAG
 - cumulative sums
 - rolling averages
@@ -35,7 +33,7 @@ This project is built for **MySQL 8.0+**.
 ## Business Analysis
 
 - revenue contribution
-- AOV
+- matched-order AOV
 - order-size distribution
 - category mix
 - menu-item ranking
@@ -48,10 +46,14 @@ This project is built for **MySQL 8.0+**.
 
 - duplicate detection
 - NULL checks
+- full-record duplicate checks
 - referential-integrity checks
+- missing-item impact analysis
+- category validation
 - date-range validation
+- time validation
 - price validation
 
 ## Design Principles
 
-The SQL is intentionally focused on business questions. Advanced functions are used where they improve the analysis rather than simply to demonstrate syntax.
+Advanced SQL is used only where it improves the business analysis. The project prioritizes readable, reproducible queries over complexity for its own sake.

@@ -1,12 +1,15 @@
 -- =====================================================
--- Restaurant Orders Database Setup
+-- Restaurant Order Analysis Setup
 -- MySQL 8.0+
 -- =====================================================
--- Purpose:
---   1) Create the analytical schema
---   2) Provide reproducible CSV loading examples
---   3) Preserve source rows with missing item IDs
+-- Creates a dedicated database, analytical tables, indexes,
+-- and commented CSV-loading examples.
+--
+-- Run this script once for a fresh local analysis database.
 -- =====================================================
+
+CREATE DATABASE IF NOT EXISTS restaurant_orders;
+USE restaurant_orders;
 
 CREATE TABLE IF NOT EXISTS menu_items (
     menu_item_id INT PRIMARY KEY,
@@ -35,11 +38,11 @@ CREATE INDEX idx_menu_category ON menu_items(category);
 -- =====================================================
 -- CSV LOAD EXAMPLES
 -- =====================================================
--- Run after creating the tables.
--- Adjust the file paths to your local environment.
+-- Load menu_items first because order_details references it.
+-- Adjust file paths to your local environment.
 --
--- MySQL may require LOCAL INFILE to be enabled:
--- SET GLOBAL local_infile = 1;
+-- MySQL may require LOCAL INFILE to be enabled on the client
+-- and/or server before using these statements.
 --
 -- LOAD DATA LOCAL INFILE 'data/raw/menu_items.csv'
 -- INTO TABLE menu_items
@@ -50,8 +53,9 @@ CREATE INDEX idx_menu_category ON menu_items(category);
 -- (menu_item_id, item_name, category, price);
 --
 -- The source order_details.csv contains 137 rows where
--- item_id is the literal text 'NULL'. Convert those to
--- SQL NULL rather than inventing a menu-item match.
+-- item_id is the literal text 'NULL'. Convert that text to
+-- SQL NULL so the source record is preserved without creating
+-- an invalid menu-item relationship.
 --
 -- LOAD DATA LOCAL INFILE 'data/raw/order_details.csv'
 -- INTO TABLE order_details
