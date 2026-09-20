@@ -1,175 +1,141 @@
 -- =====================================================
 -- Revenue Analysis
+-- MySQL 8.0+
 -- =====================================================
--- Analyze total revenue, average order value, and
--- revenue performance by category and time period
--- =====================================================
-
--- =====================================================
--- 1. OVERALL REVENUE METRICS
+-- Revenue metrics use only order-detail rows with a valid
+-- menu-item match so every revenue value has a known price.
 -- =====================================================
 
--- Total Revenue, Orders, Items, AOV
+-- 1. Overall revenue KPIs
 SELECT
     COUNT(DISTINCT od.order_id) AS total_orders,
-    COUNT(*) AS total_items_sold,
-    SUM(mi.price) AS total_revenue,
-    ROUND(AVG(mi.price), 2) AS avg_item_price,
-    ROUND(SUM(mi.price) / COUNT(DISTINCT od.order_id), 2) AS avg_order_value_aov,
+    COUNT(*) AS matched_items_sold,
+    ROUND(SUM(mi.price), 2) AS total_revenue,
+    ROUND(SUM(mi.price) / COUNT(DISTINCT od.order_id), 2) AS avg_order_value,
     ROUND(COUNT(*) / COUNT(DISTINCT od.order_id), 2) AS avg_items_per_order
 FROM order_details od
-JOIN menu_items mi ON od.item_id = mi.menu_item_id;
+JOIN menu_items mi
+    ON od.item_id = mi.menu_item_id;
 
-
--- =====================================================
--- 2. REVENUE BY CATEGORY
--- =====================================================
-
--- Revenue and performance metrics by cuisine category
+-- 2. Revenue by category
 SELECT
     mi.category,
     COUNT(*) AS items_sold,
-    SUM(mi.price) AS total_revenue,
-    ROUND(AVG(mi.price), 2) AS avg_item_price,
-    ROUND(SUM(mi.price) / COUNT(DISTINCT od.order_id), 2) AS revenue_per_order,
-    ROUND((SUM(mi.price) / (
-        SELECT SUM(price)
-        FROM order_details od2
-        JOIN menu_items mi2 ON od2.item_id = mi2.menu_item_id
-    )) * 100, 2) AS revenue_percentage
+    ROUND(SUM(mi.price), 2) AS total_revenue,
+    ROUND(
+        SUM(mi.price) * 100.0 /
+        (SELECT SUM(mi2.price)
+         FROM order_details od2
+         JOIN menu_items mi2 ON od2.item_id = mi2.menu_item_id),
+        2
+    ) AS revenue_share_pct
 FROM order_details od
-JOIN menu_items mi ON od.item_id = mi.menu_item_id
+JOIN menu_items mi
+    ON od.item_id = mi.menu_item_id
 GROUP BY mi.category
 ORDER BY total_revenue DESC;
 
-
--- =====================================================
--- 3. TOP 10 REVENUE-GENERATING ITEMS
--- =====================================================
-
+-- 3. Top 10 revenue-generating items
 SELECT
     mi.item_name,
     mi.category,
     mi.price,
-    COUNT(*) AS times_ordered,
-    SUM(mi.price) AS total_revenue,
-    ROUND(SUM(mi.price) / COUNT(*), 2) AS revenue_per_order
+    COUNT(*) AS items_sold,
+    ROUND(SUM(mi.price), 2) AS total_revenue
 FROM order_details od
-JOIN menu_items mi ON od.item_id = mi.menu_item_id
+JOIN menu_items mi
+    ON od.item_id = mi.menu_item_id
 GROUP BY mi.menu_item_id, mi.item_name, mi.category, mi.price
 ORDER BY total_revenue DESC
 LIMIT 10;
 
-
--- =====================================================
--- 4. BOTTOM 10 REVENUE-GENERATING ITEMS
--- =====================================================
-
+-- 4. Bottom 10 revenue-generating items
 SELECT
     mi.item_name,
     mi.category,
     mi.price,
-    COUNT(*) AS times_ordered,
-    SUM(mi.price) AS total_revenue,
-    ROUND(SUM(mi.price) / COUNT(*), 2) AS revenue_per_order
+    COUNT(*) AS items_sold,
+    ROUND(SUM(mi.price), 2) AS total_revenue
 FROM order_details od
-JOIN menu_items mi ON od.item_id = mi.menu_item_id
+JOIN menu_items mi
+    ON od.item_id = mi.menu_item_id
 GROUP BY mi.menu_item_id, mi.item_name, mi.category, mi.price
 ORDER BY total_revenue ASC
 LIMIT 10;
 
-
--- =====================================================
--- 5. DAILY REVENUE TREND
--- =====================================================
-
--- Revenue by date for trend analysis
+-- 5. Daily revenue trend
 SELECT
     od.order_date,
     COUNT(DISTINCT od.order_id) AS total_orders,
-    COUNT(*) AS total_items,
-    SUM(mi.price) AS daily_revenue,
+    COUNT(*) AS items_sold,
+    ROUND(SUM(mi.price), 2) AS daily_revenue,
     ROUND(SUM(mi.price) / COUNT(DISTINCT od.order_id), 2) AS avg_order_value
 FROM order_details od
-JOIN menu_items mi ON od.item_id = mi.menu_item_id
+JOIN menu_items mi
+    ON od.item_id = mi.menu_item_id
 GROUP BY od.order_date
 ORDER BY od.order_date;
 
-
--- =====================================================
--- 6. MONTHLY REVENUE SUMMARY
--- =====================================================
-
+-- 6. Monthly revenue summary
 SELECT
-    EXTRACT(MONTH FROM od.order_date) AS month_number,
-    CASE EXTRACT(MONTH FROM od.order_date)
-        WHEN 1 THEN 'January'
-        WHEN 2 THEN 'February'
-        WHEN 3 THEN 'March'
-    END AS month_name,
+    DATE_FORMAT(od.order_date, '%Y-%m') AS month,
     COUNT(DISTINCT od.order_id) AS total_orders,
-    COUNT(*) AS total_items,
-    SUM(mi.price) AS monthly_revenue,
-    ROUND(AVG(mi.price), 2) AS avg_item_price,
+    COUNT(*) AS items_sold,
+    ROUND(SUM(mi.price), 2) AS monthly_revenue,
     ROUND(SUM(mi.price) / COUNT(DISTINCT od.order_id), 2) AS avg_order_value
 FROM order_details od
-JOIN menu_items mi ON od.item_id = mi.menu_item_id
-GROUP BY EXTRACT(MONTH FROM od.order_date)
-ORDER BY month_number;
+JOIN menu_items mi
+    ON od.item_id = mi.menu_item_id
+GROUP BY DATE_FORMAT(od.order_date, '%Y-%m')
+ORDER BY month;
 
-
--- =====================================================
--- 7. REVENUE BY PRICE TIER
--- =====================================================
-
--- Analyze revenue by price ranges
+-- 7. Revenue by price tier
 SELECT
     CASE
-        WHEN mi.price < 10 THEN 'Budget ($0-$9.99)'
-        WHEN mi.price BETWEEN 10 AND 14.99 THEN 'Mid-Range ($10-$14.99)'
-        WHEN mi.price BETWEEN 15 AND 19.99 THEN 'Premium ($15-$19.99)'
-        ELSE 'Ultra-Premium ($20+)'
+        WHEN mi.price < 10 THEN 'Budget (<$10)'
+        WHEN mi.price < 15 THEN 'Mid-Range ($10-$14.99)'
+        ELSE 'Premium ($15+)'
     END AS price_tier,
     COUNT(*) AS items_sold,
-    SUM(mi.price) AS total_revenue,
-    ROUND(AVG(mi.price), 2) AS avg_item_price,
-    ROUND((SUM(mi.price) / (
-        SELECT SUM(price)
-        FROM order_details od2
-        JOIN menu_items mi2 ON od2.item_id = mi2.menu_item_id
-    )) * 100, 2) AS revenue_percentage
+    ROUND(SUM(mi.price), 2) AS total_revenue,
+    ROUND(
+        COUNT(*) * 100.0 /
+        (SELECT COUNT(*)
+         FROM order_details od2
+         JOIN menu_items mi2 ON od2.item_id = mi2.menu_item_id),
+        2
+    ) AS item_share_pct
 FROM order_details od
-JOIN menu_items mi ON od.item_id = mi.menu_item_id
-GROUP BY
-    CASE
-        WHEN mi.price < 10 THEN 'Budget ($0-$9.99)'
-        WHEN mi.price BETWEEN 10 AND 14.99 THEN 'Mid-Range ($10-$14.99)'
-        WHEN mi.price BETWEEN 15 AND 19.99 THEN 'Premium ($15-$19.99)'
-        ELSE 'Ultra-Premium ($20+)'
-    END
-ORDER BY avg_item_price DESC;
+JOIN menu_items mi
+    ON od.item_id = mi.menu_item_id
+GROUP BY price_tier
+ORDER BY total_revenue DESC;
 
-
--- =====================================================
--- 8. REVENUE GROWTH ANALYSIS
--- =====================================================
-
--- Week-over-week revenue comparison
+-- 8. Week-over-week revenue change
 WITH weekly_revenue AS (
     SELECT
-        DATE_TRUNC('week', od.order_date) AS week_start,
+        DATE_SUB(od.order_date, INTERVAL WEEKDAY(od.order_date) DAY) AS week_start,
         SUM(mi.price) AS weekly_revenue
     FROM order_details od
-    JOIN menu_items mi ON od.item_id = mi.menu_item_id
-    GROUP BY DATE_TRUNC('week', od.order_date)
+    JOIN menu_items mi
+        ON od.item_id = mi.menu_item_id
+    GROUP BY DATE_SUB(od.order_date, INTERVAL WEEKDAY(od.order_date) DAY)
+),
+weekly_with_lag AS (
+    SELECT
+        week_start,
+        weekly_revenue,
+        LAG(weekly_revenue) OVER (ORDER BY week_start) AS previous_week_revenue
+    FROM weekly_revenue
 )
 SELECT
     week_start,
-    weekly_revenue,
-    LAG(weekly_revenue) OVER (ORDER BY week_start) AS previous_week_revenue,
+    ROUND(weekly_revenue, 2) AS weekly_revenue,
+    ROUND(previous_week_revenue, 2) AS previous_week_revenue,
     ROUND(
-        ((weekly_revenue - LAG(weekly_revenue) OVER (ORDER BY week_start)) /
-        LAG(weekly_revenue) OVER (ORDER BY week_start)) * 100, 2
-    ) AS growth_percentage
-FROM weekly_revenue
+        (weekly_revenue - previous_week_revenue) * 100.0 /
+        NULLIF(previous_week_revenue, 0),
+        2
+    ) AS growth_pct
+FROM weekly_with_lag
 ORDER BY week_start;
