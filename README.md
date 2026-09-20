@@ -15,22 +15,22 @@ Restaurant_Orders_Analytics/
 ├── data/
 │   ├── raw/
 │   │   ├── order_details.csv (12,233 transactions)
-│   │   └── menu_items.csv (33 items, 4 categories)
-│   └── processed/
-│       └── analysis_results/
+│   │   ├── menu_items.csv (33 items, 4 categories)
+│   │   └── restaurant_db_data_dictionary.csv
 ├── sql/
 │   ├── 01_setup/
 │   │   └── create_tables.sql
 │   ├── 02_analysis/
-│   │   ├── revenue_analysis.sql
-│   │   ├── menu_performance.sql
-│   │   └── customer_behavior.sql
+│   │   ├── revenue_analysis.sql (8 queries)
+│   │   ├── menu_performance.sql (9 queries)
+│   │   └── customer_behavior.sql (10 queries)
 │   └── 03_advanced/
-│       ├── cohort_analysis.sql
-│       └── trend_analysis.sql
+│       └── advanced_analysis.sql (12 queries)
 ├── analysis/
 │   ├── key_findings.md
 │   └── recommendations.md
+├── docs/
+│   └── SQL_TECHNIQUES.md
 └── README.md
 ```
 
@@ -84,57 +84,64 @@ mysql -u username -p < sql/02_analysis/revenue_analysis.sql
 ## 📈 Key Findings
 
 ### Revenue Metrics
-- **Total Revenue**: $67,348.65
+- **Total Revenue**: $159,217.50 (estimated)
 - **Total Orders**: 5,370
-- **Average Order Value**: $12.54
+- **Average Order Value**: $29.65
 - **Items per Order**: 2.28
 
 ### Top Performers
-- **Best Item**: Chicken Parmesan ($17.95) - 230 orders
-- **Top Category**: Asian Cuisine (28.4% of orders)
-- **Highest Revenue Item**: Korean Beef Bowl
+- **Best Item**: Chicken Parmesan ($17.95) - 231 orders
+- **Top Category**: Italian Cuisine (36.2% of revenue)
+- **Highest Volume**: Chicken Burrito (270 orders)
+- **Peak Hours**: 12:00 PM - 1:00 PM (15.8% of daily orders)
 
 ### Operational Insights
-- **Peak Hours**: 12:00 PM - 2:00 PM (lunch rush)
-- **Slowest Period**: 9:00 AM - 11:00 AM
+- **Peak Hours**: 12:00 PM - 2:00 PM (lunch rush - 42% of orders)
+- **Slowest Period**: 9:00 AM - 11:00 AM (4% of orders)
 - **Average Order Composition**: 2-3 items per order
+- **Best Day**: Saturday ($26,120 weekly revenue)
 
 ## 💡 Strategic Recommendations
 
-1. **Expand Asian Category** - Highest demand and order frequency
-2. **Optimize Low-Performers** - Consider removing or repricing underperforming items
-3. **Bundle Complementary Items** - Create combo meals based on pairing analysis
-4. **Staffing** - Increase capacity during 12 PM - 2 PM peak
-5. **Menu Pricing** - Review pricing strategy; higher prices don't always mean lower volume
+1. **Expand Asian & Italian Categories** - Highest demand and revenue contributors
+2. **Remove Low-Performers** - Hot Dog (78 orders), Veggie Burger (84 orders)
+3. **Create Bundle Meals** - Based on item pairing analysis (182+ co-purchases)
+4. **Optimize Staffing** - Increase capacity during 11 AM - 2 PM peak
+5. **Premium Pricing Strategy** - 41% of sales at $15+, no inverse price-demand correlation
 
 ## 📊 Analysis Files
 
-### SQL Queries
-- **revenue_analysis.sql** - Revenue metrics, AOV, category performance
-- **menu_performance.sql** - Item rankings, demand analysis
-- **customer_behavior.sql** - Order patterns, peak hours, basket analysis
-- **cohort_analysis.sql** - Time-based trends and daily patterns
-- **advanced_analysis.sql** - Complex correlations and predictions
+### SQL Queries (39 Total)
+- **revenue_analysis.sql** (8 queries) - Revenue metrics, AOV, category performance
+- **menu_performance.sql** (9 queries) - Item rankings, demand analysis
+- **customer_behavior.sql** (10 queries) - Order patterns, peak hours, basket analysis
+- **advanced_analysis.sql** (12 queries) - Window functions, CTEs, statistical analysis
 
 ### Reports
 - **key_findings.md** - Executive summary of insights
-- **recommendations.md** - Actionable business recommendations
+- **recommendations.md** - Actionable business recommendations with ROI projections
+- **SQL_TECHNIQUES.md** - SQL learning guide and techniques reference
 
 ## 🛠️ Technical Stack
 
 - **SQL**: Standard SQL (compatible with MySQL, PostgreSQL, SQLite)
 - **Data Source**: CSV files with 12,233 transactions
 - **Analysis Period**: January 1 - March 31, 2023
-- **Complexity**: Intermediate (JOINs, aggregations, window functions)
+- **Complexity**: Intermediate to Advanced (JOINs, window functions, CTEs)
 
-## 📋 Methodology
+## 📋 SQL Techniques Demonstrated
 
 This analysis uses:
-- **Aggregate Functions**: SUM, COUNT, AVG, MAX, MIN
+- **Aggregate Functions**: SUM, COUNT, AVG, MAX, MIN, PERCENTILE_CONT
 - **JOINs**: Combining order details with menu items
 - **GROUP BY**: Analyzing by category, item, and time period
-- **Window Functions**: Running totals and rankings
+- **Window Functions**: ROW_NUMBER, RANK, NTILE, LAG, SUM() OVER, AVG() OVER
+- **CTEs (Common Table Expressions)**: Complex query building
+- **Subqueries**: Nested queries and comparisons
 - **Date Functions**: Time-based analysis and trends
+- **CASE Statements**: Dynamic categorization
+- **Statistical Functions**: Standard deviation, percentile analysis
+- **Self Joins**: Market basket analysis (item affinity)
 
 ## 🎓 Learning Outcomes
 
@@ -142,9 +149,10 @@ This project demonstrates:
 ✅ Complex SQL queries and data aggregation
 ✅ Business analytics and insight generation
 ✅ Data exploration and pattern recognition
-✅ Report writing and recommendations
+✅ Report writing and actionable recommendations
 ✅ Real-world dataset analysis
-✅ Performance optimization thinking
+✅ Advanced SQL techniques (window functions, CTEs)
+✅ Professional documentation and project structure
 
 ## 📝 Data Dictionary
 
@@ -168,7 +176,7 @@ This project demonstrates:
 - [ ] Execute analysis queries
 - [ ] Review findings and recommendations
 - [ ] Generate visualizations (Power BI, Tableau)
-- [ ] Present insights to stakeholders
+- [ ] Implement strategic recommendations
 
 ## 📧 Contact & Support
 
@@ -179,3 +187,4 @@ For questions or improvements to this analysis, feel free to reach out or submit
 **Last Updated**: September 20, 2026
 **Status**: Production Ready
 **Difficulty**: Intermediate SQL
+**Author**: Data Analyst
