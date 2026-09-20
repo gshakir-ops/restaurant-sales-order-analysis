@@ -1,190 +1,244 @@
-# Restaurant Orders Analytics
+# Restaurant Sales & Order Analysis
 
-A comprehensive SQL analysis project demonstrating data analytics skills using real restaurant order data spanning January - March 2023.
+A recruiter-ready **MySQL 8.0 data analytics portfolio project** analyzing restaurant transactions from January 1 through March 31, 2023.
 
-## 📊 Project Overview
+The project combines data-quality validation, SQL-based exploratory analysis, business-focused performance analysis, and concise documentation. The goal is to show a practical analytics workflow: **validate the data → define reliable metrics → analyze patterns → communicate evidence-based findings**.
 
-This project analyzes 5,370 orders across 33 menu items and 4 cuisine categories to extract actionable business insights. The analysis covers revenue optimization, customer behavior, menu performance, and operational efficiency.
+## Business Context
 
-**Dataset**: 12,233+ order transactions over 3 months
+The dataset contains restaurant menu items and order-detail transactions. The analysis focuses on revenue, menu performance, order behavior, time-of-day demand, basket combinations, and revenue concentration.
 
-## 📁 Project Structure
+Revenue calculations use order-detail rows that can be matched to a known menu item price. The raw CSV is preserved, including 137 rows whose `item_id` value is the literal `NULL` string and therefore cannot be assigned a menu price without additional information.
 
-```
-Restaurant_Orders_Analytics/
+## Key Business Questions
+
+1. How much revenue and order volume does the restaurant generate?
+2. Which menu categories and items contribute the most revenue?
+3. Which items have the highest and lowest order volume?
+4. How does demand vary by hour and day of week?
+5. What does order-size behavior look like?
+6. Which menu items are frequently ordered together?
+7. How concentrated is revenue across the menu?
+8. What findings are strong enough to support a business test or follow-up analysis?
+
+## Dataset
+
+| Table | Rows | Purpose |
+|---|---:|---|
+| `menu_items` | 32 | Menu item, category, and price reference |
+| `order_details` | 12,234 | Order-level line items |
+| Distinct orders | 5,370 | Unique customer order transactions |
+| Matched order-detail rows | 12,097 | Rows with a valid menu item match |
+| Unmatched rows | 137 | `item_id = NULL` in the source CSV |
+
+**Date range:** January 1, 2023 – March 31, 2023  
+**Menu categories:** American, Asian, Mexican, Italian  
+**Menu price range:** $5.00 – $19.95
+
+## Data Quality & Analytical Treatment
+
+The raw files were profiled before analysis.
+
+Key checks include:
+
+- row counts and date coverage
+- duplicate `order_details_id` values
+- NULL / missing values
+- menu-item uniqueness
+- referential integrity between `order_details` and `menu_items`
+- price validity
+- valid date/time values
+
+The audit found:
+
+- **0 duplicate `order_details_id` values**
+- **137 unmatched item IDs**, all represented by the literal `NULL` value in the source CSV
+- **All 32 known menu items appear in matched order data**
+
+The 137 unmatched rows are **not deleted**. They remain in the raw dataset and are excluded from price-based revenue calculations because a reliable menu price cannot be established.
+
+## Core Validated Metrics
+
+Using matched menu-item records for revenue calculations:
+
+| Metric | Result |
+|---|---:|
+| Total orders | **5,370** |
+| Matched items sold | **12,097** |
+| Average items per order | **2.25** |
+| Revenue from matched items | **$159,217.90** |
+| Average order value | **$29.65** |
+
+### Revenue by Category
+
+| Category | Revenue | Revenue Share |
+|---|---:|---:|
+| Italian | $49,462.70 | 31.07% |
+| Asian | $46,720.65 | 29.34% |
+| Mexican | $34,796.80 | 21.85% |
+| American | $28,237.75 | 17.74% |
+
+### Highest-Revenue Menu Items
+
+1. **Korean Beef Bowl** — $10,554.60
+2. **Spaghetti & Meatballs** — $8,436.50
+3. **Tofu Pad Thai** — $8,149.00
+4. **Cheeseburger** — $8,132.85
+5. **Hamburger** — $8,054.90
+
+### Highest-Volume Menu Items
+
+1. **Hamburger** — 622 orders
+2. **Edamame** — 620 orders
+3. **Korean Beef Bowl** — 588 orders
+4. **Cheeseburger** — 583 orders
+5. **French Fries** — 571 orders
+
+### Peak Ordering Hour
+
+**12:00 PM** is the busiest hour, accounting for **644 orders (11.99% of all orders)**.
+
+### Order Size
+
+- 1 item: **38.23%**
+- 2–3 items: **44.58%**
+- 4–6 items: **14.77%**
+- 7–10 items: **1.42%**
+- 11+ items: **1.01%**
+
+## Visual Summary
+
+<img src="docs/revenue_by_category.svg" alt="Revenue by category" width="760">
+
+<img src="docs/monthly_revenue.svg" alt="Monthly revenue" width="760">
+
+<img src="docs/orders_by_hour.svg" alt="Orders by hour" width="760">
+
+These visuals provide a quick executive view; the SQL files remain the source for reproducible calculations.
+
+## SQL Analysis Areas
+
+The SQL is organized into five analytical stages:
+
+### 1. Setup
+Schema creation and reproducible CSV loading instructions for MySQL 8.0.
+
+### 2. Data Quality
+Validation of row counts, duplicates, NULLs, referential integrity, dates, and prices.
+
+### 3. Revenue Analysis
+Revenue, AOV, category contribution, top/bottom revenue items, daily/monthly trends, price tiers, and week-over-week change.
+
+### 4. Menu & Order Analysis
+Menu-item demand, category performance, item rankings, order behavior, peak hours, order-size distribution, and basket pairings.
+
+### 5. Advanced SQL
+Window functions, cumulative revenue, rolling averages, ABC/Pareto analysis, anomaly detection, and revenue concentration.
+
+The current repository contains **40 analysis/data-quality queries**, excluding schema setup and loading statements.
+
+## Project Structure
+
+<pre>
+restaurant-sales-order-analysis/
 ├── data/
-│   ├── raw/
-│   │   ├── order_details.csv (12,233 transactions)
-│   │   ├── menu_items.csv (33 items, 4 categories)
-│   │   └── restaurant_db_data_dictionary.csv
+│   └── raw/
+│       ├── menu_items.csv
+│       ├── order_details.csv
+│       └── restaurant_db_data_dictionary.csv
 ├── sql/
 │   ├── 01_setup/
 │   │   └── create_tables.sql
 │   ├── 02_analysis/
-│   │   ├── revenue_analysis.sql (8 queries)
-│   │   ├── menu_performance.sql (9 queries)
-│   │   └── customer_behavior.sql (10 queries)
+│   │   ├── data_quality.sql
+│   │   ├── menu_performance.sql
+│   │   ├── order_behavior.sql
+│   │   └── revenue_analysis.sql
 │   └── 03_advanced/
-│       └── advanced_analysis.sql (12 queries)
+│       └── advanced_analysis.sql
 ├── analysis/
 │   ├── key_findings.md
 │   └── recommendations.md
 ├── docs/
-│   └── SQL_TECHNIQUES.md
+│   ├── SQL_TECHNIQUES.md
+│   ├── orders_by_hour.svg
+│   ├── monthly_revenue.svg
+│   └── revenue_by_category.svg
 └── README.md
-```
+</pre>
 
-## 🎯 Key Questions Answered
+## How to Reproduce
 
-### Revenue & Performance
-1. **Total Revenue & AOV** - What's our revenue and average order value?
-2. **Top Revenue Drivers** - Which items and categories generate the most revenue?
-3. **Revenue by Category** - How does each cuisine category perform?
+### Requirements
 
-### Menu Analysis
-4. **Best Performers** - Which items are ordered most frequently?
-5. **Price-Demand Correlation** - Do higher-priced items sell less?
-6. **Category Trends** - Which cuisine categories dominate orders?
+- MySQL 8.0+
+- `LOCAL INFILE` enabled if loading CSVs with `LOAD DATA LOCAL INFILE`
 
-### Customer Insights
-7. **Peak Hours** - When do customers order most?
-8. **Order Patterns** - What's the average order size?
-9. **Item Pairing** - Which items are commonly ordered together?
+### 1. Create the schema
 
-### Business Optimization
-10. **Low-Performance Items** - Which items should be reconsidered?
-11. **Growth Opportunities** - Which categories should we expand?
-12. **Daily Trends** - How does volume fluctuate over time?
+Run:
 
-## 🔧 Getting Started
+<pre>
+mysql -u YOUR_USERNAME -p &lt; sql/01_setup/create_tables.sql
+</pre>
 
-### Prerequisites
-- SQL database (MySQL, PostgreSQL, SQLite, or similar)
-- CSV file reader/importer for your database
+### 2. Load the CSV files
 
-### Setup Instructions
+The setup script includes MySQL loading examples. For `order_details.csv`, the source literal `NULL` item IDs are converted to SQL NULL during import so the raw record can be preserved without creating a false foreign-key match.
 
-1. **Create tables**:
-```bash
-# Run the setup script to create tables and load data
-mysql -u username -p < sql/01_setup/create_tables.sql
-```
+### 3. Run the analysis
 
-2. **Import CSV data**:
-```bash
-# Load order_details and menu_items into respective tables
-```
+Run the files in this order:
 
-3. **Run analysis queries**:
-```bash
-# Execute queries from sql/02_analysis/ directory
-mysql -u username -p < sql/02_analysis/revenue_analysis.sql
-```
+<pre>
+sql/02_analysis/data_quality.sql
+sql/02_analysis/revenue_analysis.sql
+sql/02_analysis/menu_performance.sql
+sql/02_analysis/order_behavior.sql
+sql/03_advanced/advanced_analysis.sql
+</pre>
 
-## 📈 Key Findings
+### 4. Review findings
 
-### Revenue Metrics
-- **Total Revenue**: $159,217.50 (estimated)
-- **Total Orders**: 5,370
-- **Average Order Value**: $29.65
-- **Items per Order**: 2.28
+See:
 
-### Top Performers
-- **Best Item**: Chicken Parmesan ($17.95) - 231 orders
-- **Top Category**: Italian Cuisine (36.2% of revenue)
-- **Highest Volume**: Chicken Burrito (270 orders)
-- **Peak Hours**: 12:00 PM - 1:00 PM (15.8% of daily orders)
+- `analysis/key_findings.md`
+- `analysis/recommendations.md`
 
-### Operational Insights
-- **Peak Hours**: 12:00 PM - 2:00 PM (lunch rush - 42% of orders)
-- **Slowest Period**: 9:00 AM - 11:00 AM (4% of orders)
-- **Average Order Composition**: 2-3 items per order
-- **Best Day**: Saturday ($26,120 weekly revenue)
+## SQL Techniques Demonstrated
 
-## 💡 Strategic Recommendations
+- JOINs
+- CTEs
+- GROUP BY and aggregation
+- CASE expressions
+- subqueries
+- window functions
+- `RANK()`, `ROW_NUMBER()`, and `NTILE()`
+- `LAG()`
+- cumulative totals
+- rolling averages
+- percentage contribution
+- basket/item-pair analysis
+- ABC/Pareto analysis
+- standard deviation and percentile-style analysis using MySQL-compatible techniques
 
-1. **Expand Asian & Italian Categories** - Highest demand and revenue contributors
-2. **Remove Low-Performers** - Hot Dog (78 orders), Veggie Burger (84 orders)
-3. **Create Bundle Meals** - Based on item pairing analysis (182+ co-purchases)
-4. **Optimize Staffing** - Increase capacity during 11 AM - 2 PM peak
-5. **Premium Pricing Strategy** - 41% of sales at $15+, no inverse price-demand correlation
+## Important Analytical Limitations
 
-## 📊 Analysis Files
+- The dataset covers only three months.
+- There is no customer identifier, so this project analyzes **order behavior**, not individual customer retention or lifetime value.
+- There is no quantity field; each row represents an order-detail line.
+- 137 source rows have no usable menu-item match and are excluded from price-based revenue metrics.
+- Revenue is treated as menu-price revenue; the dataset does not provide food cost, discounts, taxes, refunds, labor cost, or profit.
+- Observed relationships are descriptive and should not be interpreted as causal effects without further testing.
 
-### SQL Queries (39 Total)
-- **revenue_analysis.sql** (8 queries) - Revenue metrics, AOV, category performance
-- **menu_performance.sql** (9 queries) - Item rankings, demand analysis
-- **customer_behavior.sql** (10 queries) - Order patterns, peak hours, basket analysis
-- **advanced_analysis.sql** (12 queries) - Window functions, CTEs, statistical analysis
+## Recommendations
 
-### Reports
-- **key_findings.md** - Executive summary of insights
-- **recommendations.md** - Actionable business recommendations with ROI projections
-- **SQL_TECHNIQUES.md** - SQL learning guide and techniques reference
+The recommendations in `analysis/recommendations.md` are framed as **testable business opportunities**, not guaranteed outcomes. Revenue impact, pricing elasticity, operational savings, and customer retention should be validated with additional data or controlled experiments.
 
-## 🛠️ Technical Stack
+## Author
 
-- **SQL**: Standard SQL (compatible with MySQL, PostgreSQL, SQLite)
-- **Data Source**: CSV files with 12,233 transactions
-- **Analysis Period**: January 1 - March 31, 2023
-- **Complexity**: Intermediate to Advanced (JOINs, window functions, CTEs)
+**Golam Shakir**
 
-## 📋 SQL Techniques Demonstrated
+## License
 
-This analysis uses:
-- **Aggregate Functions**: SUM, COUNT, AVG, MAX, MIN, PERCENTILE_CONT
-- **JOINs**: Combining order details with menu items
-- **GROUP BY**: Analyzing by category, item, and time period
-- **Window Functions**: ROW_NUMBER, RANK, NTILE, LAG, SUM() OVER, AVG() OVER
-- **CTEs (Common Table Expressions)**: Complex query building
-- **Subqueries**: Nested queries and comparisons
-- **Date Functions**: Time-based analysis and trends
-- **CASE Statements**: Dynamic categorization
-- **Statistical Functions**: Standard deviation, percentile analysis
-- **Self Joins**: Market basket analysis (item affinity)
-
-## 🎓 Learning Outcomes
-
-This project demonstrates:
-✅ Complex SQL queries and data aggregation
-✅ Business analytics and insight generation
-✅ Data exploration and pattern recognition
-✅ Report writing and actionable recommendations
-✅ Real-world dataset analysis
-✅ Advanced SQL techniques (window functions, CTEs)
-✅ Professional documentation and project structure
-
-## 📝 Data Dictionary
-
-### order_details table
-- `order_details_id`: Unique identifier for each line item
-- `order_id`: Groups items belonging to same order
-- `order_date`: Transaction date (MM/DD/YY format)
-- `order_time`: Transaction time (HH:MM:SS AM/PM)
-- `item_id`: Reference to menu_items table
-
-### menu_items table
-- `menu_item_id`: Unique item identifier
-- `item_name`: Descriptive name of menu item
-- `category`: Cuisine type (American, Asian, Mexican, Italian)
-- `price`: Menu price in USD
-
-## 🚀 Next Steps
-
-- [ ] Import data into your SQL database
-- [ ] Run setup script to create tables
-- [ ] Execute analysis queries
-- [ ] Review findings and recommendations
-- [ ] Generate visualizations (Power BI, Tableau)
-- [ ] Implement strategic recommendations
-
-## 📧 Contact & Support
-
-For questions or improvements to this analysis, feel free to reach out or submit a pull request.
-
----
-
-**Last Updated**: September 20, 2026
-**Status**: Production Ready
-**Difficulty**: Intermediate SQL
-**Author**: Data Analyst
+MIT License
